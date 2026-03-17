@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal CRM</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">Personal CRM</span>
+      </div>
+      <nav class="page-nav">
+        <button class="page-nav-btn active" id="navContacts" onclick="setPage('contacts')">Contacts</button>
+        <button class="page-nav-btn" id="navTodos" onclick="setPage('todos')">To-Do</button>
+      </nav>
+      <div class="header-actions">
+        <button class="help-btn" onclick="openHelp()" title="Help & shortcuts">?</button>
+        <button class="btn btn-ghost btn-sm" id="headerImport" onclick="openImport()">⬆ Import</button>
+        <button class="btn btn-ghost btn-sm" id="headerExport" onclick="exportContacts()">⬇ Export</button>
+        <button class="btn btn-primary" id="headerAdd" onclick="openModal()">
+          <span>+</span> Add Contact
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main" id="contactsPage">
+
+    <!-- Stats Bar -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Total Contacts</div>
+      </div>
+      <div class="stat-card accent-blue">
+        <div class="stat-value" id="statWork">—</div>
+        <div class="stat-label">Work</div>
+      </div>
+      <div class="stat-card accent-purple">
+        <div class="stat-value" id="statPersonal">—</div>
+        <div class="stat-label">Personal</div>
+      </div>
+      <div class="stat-card accent-orange" id="statDueCard">
+        <div class="stat-value" id="statDue">—</div>
+        <div class="stat-label">Due for Follow-up</div>
+        <div class="stat-severity" id="statSeverity"></div>
+      </div>
+    </div>
+
+    <!-- Recently Added Strip -->
+    <div id="recentSection" style="display:none">
+      <div class="section-label">Recently Added</div>
+      <div class="recent-strip" id="recentStrip"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search contacts… (/)"
+          oninput="renderContacts()"
+        />
+      </div>
+      <div class="filter-tabs">
+        <button class="tab active" onclick="setFilter('all', this)">All</button>
+        <button class="tab" onclick="setFilter('work', this)">Work</button>
+        <button class="tab" onclick="setFilter('personal', this)">Personal</button>
+        <button class="tab" onclick="setFilter('due', this)">Due</button>
+      </div>
+      <div class="sort-wrap">
+        <select id="sortSelect" class="sort-select" onchange="renderContacts()">
+          <option value="name">Sort: Name</option>
+          <option value="last_contacted">Sort: Last Contacted</option>
+          <option value="next_contact_reminder">Sort: Next Reminder</option>
+          <option value="category">Sort: Category</option>
+          <option value="created_at">Sort: Recently Added</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Bulk Bar -->
+    <div class="bulk-bar" id="bulkBar">
+      <span class="bulk-count" id="bulkCount">0 selected</span>
+      <div class="bulk-actions">
+        <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Clear</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportSelected()">⬇ Export Selected</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑 Delete Selected</button>
+      </div>
+    </div>
+
+    <!-- Table View -->
+    <div id="tableView">
+      <div class="table-card">
+        <table class="contact-table" id="contactTable">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" /></th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Tags</th>
+              <th>Category</th>
+              <th>Last Contacted</th>
+              <th>Next Reminder</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="contactBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+        <div id="emptyState" class="empty-state" style="display:none">
+          <div class="empty-icon">◈</div>
+          <div class="empty-title">No contacts yet</div>
+          <div class="empty-sub">Click "Add Contact" to get started, or press <kbd>N</kbd></div>
+        </div>
+      </div>
+    </div>
+
+
+  </main>
+
+  <!-- Todo Page -->
+  <main class="main kanban-main" id="todoPage" style="display:none">
+    <div class="kanban-board">
+
+      <!-- To Do -->
+      <div class="kanban-col" id="col-todo"
+           ondragover="kanbanDragOver(event)"
+           ondrop="kanbanDrop(event, 'todo')"
+           ondragleave="kanbanDragLeave(event)">
+        <div class="kanban-col-header kanban-col-header-todo">
+          <span class="kanban-col-title">To Do</span>
+          <span class="kanban-col-count" id="count-todo">0</span>
+        </div>
+        <div class="kanban-cards" id="cards-todo"></div>
+        <div class="kanban-add-wrap" id="addwrap-todo">
+          <button class="kanban-add-btn" onclick="showKanbanInput('todo')">+ Add a card</button>
+          <div class="kanban-input-box" id="inputbox-todo" style="display:none">
+            <textarea class="kanban-textarea" id="input-todo" placeholder="Enter a title…" rows="2"
+              onkeydown="kanbanInputKey(event,'todo')"></textarea>
+            <div class="kanban-input-actions">
+              <button class="btn btn-primary btn-sm" onclick="kanbanAddCard('todo')">Add card</button>
+              <button class="kanban-input-cancel" onclick="hideKanbanInput('todo')">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active -->
+      <div class="kanban-col" id="col-active"
+           ondragover="kanbanDragOver(event)"
+           ondrop="kanbanDrop(event, 'active')"
+           ondragleave="kanbanDragLeave(event)">
+        <div class="kanban-col-header kanban-col-header-active">
+          <span class="kanban-col-title">Active</span>
+          <span class="kanban-col-count" id="count-active">0</span>
+        </div>
+        <div class="kanban-cards" id="cards-active"></div>
+        <div class="kanban-add-wrap" id="addwrap-active">
+          <button class="kanban-add-btn" onclick="showKanbanInput('active')">+ Add a card</button>
+          <div class="kanban-input-box" id="inputbox-active" style="display:none">
+            <textarea class="kanban-textarea" id="input-active" placeholder="Enter a title…" rows="2"
+              onkeydown="kanbanInputKey(event,'active')"></textarea>
+            <div class="kanban-input-actions">
+              <button class="btn btn-primary btn-sm" onclick="kanbanAddCard('active')">Add card</button>
+              <button class="kanban-input-cancel" onclick="hideKanbanInput('active')">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete -->
+      <div class="kanban-col" id="col-complete"
+           ondragover="kanbanDragOver(event)"
+           ondrop="kanbanDrop(event, 'complete')"
+           ondragleave="kanbanDragLeave(event)">
+        <div class="kanban-col-header kanban-col-header-complete">
+          <span class="kanban-col-title">Complete</span>
+          <span class="kanban-col-count" id="count-complete">0</span>
+        </div>
+        <div class="kanban-cards" id="cards-complete"></div>
+        <div class="kanban-add-wrap" id="addwrap-complete">
+          <button class="kanban-add-btn" onclick="showKanbanInput('complete')">+ Add a card</button>
+          <div class="kanban-input-box" id="inputbox-complete" style="display:none">
+            <textarea class="kanban-textarea" id="input-complete" placeholder="Enter a title…" rows="2"
+              onkeydown="kanbanInputKey(event,'complete')"></textarea>
+            <div class="kanban-input-actions">
+              <button class="btn btn-primary btn-sm" onclick="kanbanAddCard('complete')">Add card</button>
+              <button class="kanban-input-cancel" onclick="hideKanbanInput('complete')">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Detail Panel Backdrop -->
+  <div class="detail-backdrop" id="detailBackdrop" onclick="closeDetail()"></div>
+
+  <!-- Detail Slide-out Panel -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <div class="detail-avatar" id="dpAvatar"></div>
+      <div class="detail-identity">
+        <div class="detail-name" id="dpName"></div>
+        <div class="detail-badges" id="dpBadges"></div>
+      </div>
+      <button class="modal-close" onclick="closeDetail()">&times;</button>
+    </div>
+    <div class="detail-body" id="detailBody">
+      <!-- Populated by JS -->
+    </div>
+    <div class="detail-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeDetail()">Close</button>
+      <button class="btn btn-primary btn-sm" id="dpEditBtn" onclick="openEdit(null)">✏️ Edit Contact</button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal modal-lg" id="modal" style="max-width:860px">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Add Contact</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="contactForm" onsubmit="submitContact(event)">
+        <input type="hidden" id="contactId" />
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input type="text" id="fname" class="form-input" placeholder="Jane Smith" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email <span class="field-hint-icon" data-hint="Used for the mailto: link in your contact list. Clicking an email address will open your mail client.">?</span></label>
+            <input type="email" id="femail" class="form-input" placeholder="jane@example.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone <span class="field-hint-icon" data-hint="Stored for your reference only — the app doesn't send any messages.">?</span></label>
+            <input type="tel" id="fphone" class="form-input" placeholder="+1 555 000 0000" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">LinkedIn <span class="field-hint-icon" data-hint="Paste their LinkedIn profile URL. It will appear as a clickable link in their detail panel.">?</span></label>
+            <input type="url" id="flinkedin" class="form-input" placeholder="https://linkedin.com/in/janesmth" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company</label>
+            <input type="text" id="fcompany" class="form-input" placeholder="Acme Corp" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tags <span class="field-hint-icon" data-hint="Comma-separated labels, e.g. investor, mentor, client. Shown as chips in the table.">?</span></label>
+            <input type="text" id="ftags" class="form-input" placeholder="investor, mentor, client" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category <span class="field-hint-icon" data-hint="Tags this contact as Work or Personal. Used to filter your list and colour-code avatars.">?</span></label>
+            <select id="fcategory" class="form-input">
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cadence (days) <span class="field-hint-icon" data-hint="Optional. How often you want to stay in touch — e.g. 14 = every 2 weeks. Leave blank for no automatic reminder cadence. When set, the Next Reminder advances by this many days each time you log an interaction.">?</span></label>
+            <input type="number" id="fcadence" class="form-input" placeholder="Optional — e.g. 30" min="1" oninput="autoFillReminder()" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Contacted <span class="field-hint-icon" data-hint="The last time you spoke, met, or messaged this person. Updated automatically when you click the ✓ Log button.">?</span></label>
+            <input type="date" id="flast" class="form-input" onchange="autoFillReminder()" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Next Reminder <span class="field-hint-icon" data-hint="The date you want to reach out again. Contacts past this date are highlighted yellow, orange, or red depending on how overdue they are.">?</span></label>
+            <input type="date" id="fnext" class="form-input" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Notes <span class="field-hint-icon" data-hint="Free-form notes about this person — how you met, things to remember, topics to bring up next time.">?</span></label>
+            <textarea id="fnotes" class="form-input form-textarea" placeholder="Add notes about this contact…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Save Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Field Hint Tooltip -->
+  <div id="fieldHintTooltip"></div>
+
+  <!-- Notes Popover -->
+  <div class="notes-popover" id="notesPopover" style="display:none"></div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="deleteOverlay" onclick="closeDelete(event)">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">Delete Contact</h2>
+        <button class="modal-close" onclick="closeDelete()">&times;</button>
+      </div>
+      <p class="delete-msg">Are you sure you want to delete <strong id="deleteName"></strong>? This cannot be undone.</p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeDelete()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay" id="importOverlay" onclick="closeImport(event)">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">Import Contacts</h2>
+        <button class="modal-close" onclick="closeImport()">&times;</button>
+      </div>
+      <div style="padding: 20px 24px;">
+        <div
+          class="drop-zone"
+          id="dropZone"
+          ondragover="dragOver(event)"
+          ondragleave="dragLeave(event)"
+          ondrop="dropFile(event)"
+          onclick="document.getElementById('fileInput').click()"
+        >
+          <div class="drop-icon">📂</div>
+          <div class="drop-title">Drop a CSV file here</div>
+          <div class="import-hint">or click to browse — columns: name, email, phone, linkedin, category, notes, last_contacted, next_contact_reminder, cadence_days</div>
+          <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="handleFileInput(this)" />
+        </div>
+        <div class="import-status" id="importStatus"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="downloadImportTemplate()">⬇ Template CSV</button>
+        <button class="btn btn-ghost" onclick="closeImport()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div class="modal-overlay" id="helpOverlay" onclick="closeHelp(event)">
+    <div class="modal help-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Help &amp; Guide</h2>
+        <button class="modal-close" onclick="closeHelp()">&times;</button>
+      </div>
+      <div class="help-body">
+
+        <div class="help-section">
+          <div class="help-section-title">Keyboard Shortcuts</div>
+          <div class="help-shortcuts">
+            <div class="help-shortcut-row"><kbd>N</kbd><span>Open the Add Contact form</span></div>
+            <div class="help-shortcut-row"><kbd>/</kbd><span>Jump to the search bar</span></div>
+            <div class="help-shortcut-row"><kbd>Esc</kbd><span>Close any open panel or modal</span></div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-section-title">Core Concepts</div>
+          <div class="help-items">
+            <div class="help-item">
+              <div class="help-item-label">Cadence</div>
+              <div class="help-item-desc">How many days between check-ins. Set it once per contact and every time you log an interaction the <em>Next Reminder</em> automatically moves forward by that many days — no manual date picking needed.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Next Reminder</div>
+              <div class="help-item-desc">The date you want to reach out again. Contacts past this date are highlighted in your list — yellow (1–7 days late), orange (8–28 days), red (29+ days).</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Logging an Interaction</div>
+              <div class="help-item-desc">Click the <strong>✓</strong> button on any row to record that you spoke today. This stamps <em>Last Contacted</em> and advances <em>Next Reminder</em> based on your cadence. Open the detail panel to attach a note to the log entry.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Streak 🔥</div>
+              <div class="help-item-desc">The number of logged interactions in the last 90 days. A quick signal for how actively you're keeping in touch.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-section-title">Views &amp; Filters</div>
+          <div class="help-items">
+            <div class="help-item">
+              <div class="help-item-label">Table / Card view</div>
+              <div class="help-item-desc">Toggle between a compact table and a card grid using the ☰ ⊞ buttons. Click any row or card to open the full detail panel.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Filters</div>
+              <div class="help-item-desc">Use the <strong>All / Work / Personal / Due</strong> tabs to narrow your list. <em>Due</em> shows everyone whose reminder date has passed.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Recently Added strip</div>
+              <div class="help-item-desc">The mini-cards above the controls show your 5 most recently added contacts. Click any to open their detail panel.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-section-title">Import &amp; Export</div>
+          <div class="help-items">
+            <div class="help-item">
+              <div class="help-item-label">Export</div>
+              <div class="help-item-desc">Downloads all contacts as a CSV. You can also select specific contacts with the checkboxes and use <em>Export Selected</em> from the bulk action bar.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Import</div>
+              <div class="help-item-desc">Upload a CSV with columns: <code>name, email, phone, linkedin, category, notes, last_contacted, next_contact_reminder, cadence_days</code>. Download the template for a ready-to-fill example.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section">
+          <div class="help-section-title">To-Do Page</div>
+          <div class="help-items">
+            <div class="help-item">
+              <div class="help-item-label">Switching pages</div>
+              <div class="help-item-desc">Use the <strong>Contacts / To-Do</strong> toggle in the header to switch between the two pages.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Linking tasks to contacts</div>
+              <div class="help-item-desc">When adding or editing a task you can link it to a contact. Their name will appear on the task row for context.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Priority</div>
+              <div class="help-item-desc">Tasks are colour-coded: <strong style="color:var(--red)">High</strong>, <strong style="color:var(--orange)">Medium</strong>, <strong style="color:var(--green)">Low</strong>. Sort by priority to tackle the most important things first.</div>
+            </div>
+            <div class="help-item">
+              <div class="help-item-label">Overdue tasks</div>
+              <div class="help-item-desc">Tasks past their due date and not yet completed are highlighted red and shown in the Overdue filter.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-section help-section-last">
+          <div class="help-section-title">Your Data</div>
+          <div class="help-items">
+            <div class="help-item">
+              <div class="help-item-label">Where is it stored?</div>
+              <div class="help-item-desc">Everything lives in <code>database.json</code> in the project folder on your Mac. It never leaves your machine. The file is excluded from git so it won't be accidentally pushed to GitHub.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
