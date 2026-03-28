@@ -13,7 +13,6 @@ A lightweight, modern personal CRM that runs entirely on your Mac. Track relatio
 - **Streak tracking** — see how actively you've kept in touch (last 90 days)
 - **Search, filter & sort** — by name, category, date, or overdue status
 - **Table & card views** — switch between a compact table and a visual card grid
-- **Dark mode** — toggle with the 🌙 button, persists across sessions
 - **Import / Export** — CSV import with drag-and-drop, full CSV export
 - **Keyboard shortcuts** — `N` new contact, `/` search, `Esc` close
 

@@ -2,6 +2,8 @@
 let contacts = [];
 let selectedIds = new Set();
 let currentFilter = 'all';
+let currentSort = 'name';
+let sortDir = 1; // 1 = asc, -1 = desc
 let detailContactId = null;
 let deleteTargetId = null;
 
@@ -14,7 +16,9 @@ const today = new Date().toISOString().split('T')[0];
 
 async function refresh() {
   await Promise.all([fetchContacts(), fetchStats(), fetchTodos()]);
+  await syncCRMTodos();
   renderRecentlyAdded();
+  if (currentPage === 'todos') renderTodos();
 }
 
 // ===== Page Navigation =====
@@ -29,6 +33,7 @@ function setPage(page) {
   document.getElementById('headerImport').style.display = isContacts ? '' : 'none';
   document.getElementById('headerExport').style.display = isContacts ? '' : 'none';
   document.getElementById('headerAdd').style.display = isContacts ? '' : 'none';
+  document.getElementById('headerAddTask').style.display = isContacts ? 'none' : '';
   if (!isContacts) renderTodos();
 }
 
@@ -98,7 +103,6 @@ function renderRecentlyAdded() {
 
 function getFilteredSorted() {
   const search = document.getElementById('searchInput').value.toLowerCase();
-  const sortBy = document.getElementById('sortSelect').value;
 
   let filtered = contacts.filter(c => {
     const matchesSearch =
@@ -118,19 +122,40 @@ function getFilteredSorted() {
   });
 
   filtered.sort((a, b) => {
-    if (sortBy === 'created_at') {
-      const va = a.created_at || '';
-      const vb = b.created_at || '';
-      return vb.localeCompare(va); // newest first
-    }
-    const va = (a[sortBy] || '').toLowerCase();
-    const vb = (b[sortBy] || '').toLowerCase();
-    if (va < vb) return -1;
-    if (va > vb) return 1;
+    const va = (a[currentSort] || '').toLowerCase();
+    const vb = (b[currentSort] || '').toLowerCase();
+    if (va < vb) return -sortDir;
+    if (va > vb) return sortDir;
     return 0;
   });
 
   return filtered;
+}
+
+function setSort(col) {
+  if (currentSort === col) {
+    sortDir = -sortDir;
+  } else {
+    currentSort = col;
+    sortDir = 1;
+  }
+  updateSortHeaders();
+  renderContacts();
+}
+
+function updateSortHeaders() {
+  ['name', 'category', 'last_contacted', 'next_contact_reminder'].forEach(col => {
+    const th = document.getElementById(`th-${col}`);
+    if (!th) return;
+    const ind = th.querySelector('.sort-indicator');
+    if (currentSort === col) {
+      ind.textContent = sortDir === 1 ? ' ▲' : ' ▼';
+      th.classList.add('sort-active');
+    } else {
+      ind.textContent = '';
+      th.classList.remove('sort-active');
+    }
+  });
 }
 
 function setFilter(filter, btn) {
@@ -168,16 +193,9 @@ function renderTable() {
     const rowClass = sev ? `row-${sev}` : '';
     const initials = getInitials(c.name);
     const avatarClass = getAvatarClass(c);
-    const streak = getStreak(c);
     const isSelected = selectedIds.has(c.id);
 
     const reminderCell = buildReminderCell(c);
-
-    const noteBtn = c.notes
-      ? `<button class="notes-btn" title="View notes"
-           onmouseenter="showNotes(event, ${JSON.stringify(c.notes).replace(/'/g, '&#39;')})"
-           onmouseleave="hideNotes()" onclick="event.stopPropagation()">📝</button>`
-      : '';
 
     return `
       <tr class="${rowClass}" data-id="${c.id}" onclick="openDetail('${c.id}')">
@@ -188,8 +206,6 @@ function renderTable() {
           <div class="contact-name">
             <div class="avatar ${avatarClass}">${initials}</div>
             <span>${escHtml(c.name)}</span>
-            ${streak > 0 ? `<span class="streak-badge">🔥 ${streak}</span>` : ''}
-            ${noteBtn}
           </div>
         </td>
         <td>${c.company ? escHtml(c.company) : '<span class="text-muted">—</span>'}</td>
@@ -246,7 +262,6 @@ function closeDetail() {
 function renderDetailPanel(c) {
   const initials = getInitials(c.name);
   const avatarClass = getAvatarClass(c);
-  const streak = getStreak(c);
   const sev = getOverdueSeverity(c);
 
   // Header
@@ -257,7 +272,6 @@ function renderDetailPanel(c) {
   document.getElementById('dpName').textContent = c.name;
 
   const badges = [`<span class="badge badge-${c.category}">${c.category}</span>`];
-  if (streak > 0) badges.push(`<span class="streak-badge">🔥 ${streak}</span>`);
   if (sev) badges.push(`<span class="due-badge due-${sev}">Overdue</span>`);
   document.getElementById('dpBadges').innerHTML = badges.join('');
 
@@ -625,6 +639,9 @@ async function submitContact(e) {
   if (res.ok) {
     document.getElementById('modalOverlay').classList.remove('open');
     await refresh();
+  } else if (res.status === 409) {
+    const data = await res.json();
+    alert(data.detail || 'A contact with this name already exists.');
   } else {
     alert('Error saving contact. Please try again.');
   }
@@ -658,27 +675,6 @@ async function confirmDelete() {
   }
 }
 
-// ===== Notes Popover =====
-
-function showNotes(event, text) {
-  const pop = document.getElementById('notesPopover');
-  pop.textContent = text;
-  pop.style.display = 'block';
-  positionPopover(event, pop);
-}
-
-function hideNotes() {
-  document.getElementById('notesPopover').style.display = 'none';
-}
-
-function positionPopover(event, pop) {
-  const x = event.clientX + 12;
-  const y = event.clientY - 10;
-  const maxX = window.innerWidth - pop.offsetWidth - 16;
-  const maxY = window.innerHeight - pop.offsetHeight - 16;
-  pop.style.left = Math.min(x, maxX) + 'px';
-  pop.style.top = Math.min(y, maxY) + 'px';
-}
 
 // ===== Helpers =====
 
@@ -692,16 +688,6 @@ function getOverdueSeverity(c) {
   return 'severe';
 }
 
-function getStreak(c) {
-  const interactions = c.interactions || [];
-  if (interactions.length === 0) return 0;
-  const cutoff = new Date(today + 'T00:00:00');
-  cutoff.setDate(cutoff.getDate() - 90);
-  return interactions.filter(i => {
-    const d = new Date(i.date + 'T00:00:00');
-    return d >= cutoff;
-  }).length;
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -771,6 +757,40 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ===== CRM → Todo Sync =====
+
+async function syncCRMTodos() {
+  const overdue = contacts.filter(c => c.next_contact_reminder && c.next_contact_reminder <= today);
+  const crmTodos = todos.filter(t => t.contact_id);
+  const overdueIds = new Set(overdue.map(c => c.id));
+  const todoContactIds = new Set(crmTodos.map(t => t.contact_id));
+
+  const ops = [];
+
+  // Create todos for newly overdue contacts
+  for (const c of overdue) {
+    if (!todoContactIds.has(c.id)) {
+      ops.push(fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: `Connect with ${c.name}`, status: 'todo', contact_id: c.id }),
+      }));
+    }
+  }
+
+  // Remove todos for contacts no longer overdue
+  for (const t of crmTodos) {
+    if (!overdueIds.has(t.contact_id)) {
+      ops.push(fetch(`/api/todos/${t.id}`, { method: 'DELETE' }));
+    }
+  }
+
+  if (ops.length > 0) {
+    await Promise.all(ops);
+    await fetchTodos();
+  }
+}
+
 // ===== Todos / Kanban =====
 
 let dragTodoId = null;
@@ -795,15 +815,22 @@ function renderTodos() {
   todos.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
 
   KANBAN_COLS.forEach(status => {
+    cols[status].sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity));
     document.getElementById(`count-${status}`).textContent = cols[status].length;
-    document.getElementById(`cards-${status}`).innerHTML = cols[status].map(t => `
-      <div class="kanban-card" draggable="true" data-id="${t.id}"
-           ondragstart="kanbanDragStart(event,'${t.id}')"
-           ondragend="kanbanDragEnd(event)">
-        <span class="kanban-card-title">${escHtml(t.title)}</span>
-        <button class="kanban-card-delete" onclick="deleteTodo('${t.id}')" title="Delete">✕</button>
-      </div>
-    `).join('');
+    document.getElementById(`cards-${status}`).innerHTML = cols[status].map(t => {
+      const crmBadge = t.contact_id ? `<span class="crm-badge">CRM</span>` : '';
+      return `
+        <div class="kanban-card" draggable="true" data-id="${t.id}"
+             ondragstart="kanbanDragStart(event,'${t.id}')"
+             ondragend="kanbanDragEnd(event)"
+             ondragover="cardDragOver(event)"
+             ondragleave="cardDragLeave(event)"
+             ondrop="cardDrop(event,'${status}')">
+          ${crmBadge}<span class="kanban-card-title">${escHtml(t.title)}</span>
+          <button class="kanban-card-delete" onclick="deleteTodo('${t.id}')" title="Delete">✕</button>
+        </div>
+      `;
+    }).join('');
   });
 }
 
@@ -842,18 +869,34 @@ async function kanbanAddCard(status) {
 
 async function moveTodo(id, status) {
   const t = todos.find(x => x.id === id);
-  if (!t || t.status === status) return;
-  await fetch(`/api/todos/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: t.title, status }),
-  });
-  await fetchTodos();
-  renderTodos();
+  if (!t) return;
+  if (t.status !== status) {
+    await fetch(`/api/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: t.title, status, contact_id: t.contact_id || null }),
+    });
+  }
+  // Append to end of target column
+  const colIds = todos
+    .filter(x => x.id !== id && x.status === status)
+    .sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity))
+    .map(x => x.id);
+  colIds.push(id);
+  await reorderTodos(colIds);
 }
 
 async function deleteTodo(id) {
   await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+  await fetchTodos();
+  renderTodos();
+}
+
+async function archiveColumn(status) {
+  const toDelete = todos.filter(t => t.status === status);
+  if (toDelete.length === 0) return;
+  if (!confirm(`Archive all ${toDelete.length} item${toDelete.length > 1 ? 's' : ''} in this column?`)) return;
+  await Promise.all(toDelete.map(t => fetch(`/api/todos/${t.id}`, { method: 'DELETE' })));
   await fetchTodos();
   renderTodos();
 }
@@ -887,15 +930,73 @@ function kanbanDragLeave(event) {
 function kanbanDrop(event, status) {
   event.preventDefault();
   event.currentTarget.classList.remove('drag-over');
-  if (dragTodoId) moveTodo(dragTodoId, status);
+  if (dragTodoId) { moveTodo(dragTodoId, status); }
   dragTodoId = null;
+}
+
+function cardDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const card = event.currentTarget;
+  if (card.dataset.id === dragTodoId) return;
+  const mid = card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2;
+  card.classList.toggle('drop-above', event.clientY < mid);
+  card.classList.toggle('drop-below', event.clientY >= mid);
+}
+
+function cardDragLeave(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drop-above', 'drop-below');
+  }
+}
+
+async function cardDrop(event, status) {
+  event.preventDefault();
+  event.stopPropagation();
+  const targetCard = event.currentTarget;
+  targetCard.classList.remove('drop-above', 'drop-below');
+  if (!dragTodoId || dragTodoId === targetCard.dataset.id) { dragTodoId = null; return; }
+
+  const insertBefore = event.clientY < targetCard.getBoundingClientRect().top + targetCard.getBoundingClientRect().height / 2;
+
+  // Get current DOM order for this column
+  const ids = [...targetCard.parentElement.querySelectorAll('.kanban-card')].map(el => el.dataset.id);
+  // Remove dragged id from wherever it is
+  const fi = ids.indexOf(dragTodoId);
+  if (fi !== -1) ids.splice(fi, 1);
+  // Insert relative to target
+  const ti = ids.indexOf(targetCard.dataset.id);
+  ids.splice(insertBefore ? ti : ti + 1, 0, dragTodoId);
+
+  // If moving to a different column, update status first
+  const dragged = todos.find(t => t.id === dragTodoId);
+  if (dragged && dragged.status !== status) {
+    await fetch(`/api/todos/${dragTodoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: dragged.title, status, contact_id: dragged.contact_id || null }),
+    });
+  }
+
+  await reorderTodos(ids);
+  dragTodoId = null;
+}
+
+async function reorderTodos(orderedIds) {
+  await fetch('/api/todos/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ordered_ids: orderedIds }),
+  });
+  await fetchTodos();
+  renderTodos();
 }
 
 // ===== Field Hint Tooltips =====
 
 const hintTooltip = document.getElementById('fieldHintTooltip');
 
-document.querySelectorAll('.field-hint-icon, #todoModal .field-hint-icon').forEach(el => {
+document.querySelectorAll('.field-hint-icon').forEach(el => {
   el.addEventListener('mouseenter', e => {
     const hint = el.getAttribute('data-hint');
     if (!hint) return;

@@ -24,7 +24,8 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 def load_db():
     if not os.path.exists(DB_PATH):
         save_db({"contacts": [], "todos": []})
-    db = json.load(open(DB_PATH, "r"))
+    with open(DB_PATH, "r") as f:
+        db = json.load(f)
     if "todos" not in db:
         db["todos"] = []
     return db
@@ -42,7 +43,6 @@ class Contact(BaseModel):
     linkedin: Optional[str] = ""
     company: Optional[str] = ""
     tags: Optional[str] = ""
-    category: Optional[str] = "work"
     notes: Optional[str] = ""
     last_contacted: Optional[str] = ""
     next_contact_reminder: Optional[str] = ""
@@ -51,7 +51,13 @@ class Contact(BaseModel):
 
 class Todo(BaseModel):
     title: str
-    status: Optional[str] = "todo"  # todo | doing | done
+    status: Optional[str] = "todo"  # todo | active | complete
+    contact_id: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class TodoReorderRequest(BaseModel):
+    ordered_ids: List[str]
 
 
 class InteractionEntry(BaseModel):
@@ -182,6 +188,10 @@ async def get_contacts():
 @app.post("/api/contacts")
 async def create_contact(contact: Contact):
     db = load_db()
+    name_lower = contact.name.strip().lower()
+    for existing in db["contacts"]:
+        if existing.get("name", "").strip().lower() == name_lower:
+            raise HTTPException(status_code=409, detail=f"A contact named '{contact.name}' already exists.")
     new_contact = contact.dict()
     new_contact["id"] = str(uuid.uuid4())
     new_contact["created_at"] = date.today().isoformat()
@@ -235,7 +245,7 @@ async def add_interaction(contact_id: str, entry: InteractionEntry):
             }
             c["interactions"].append(interaction)
             c["last_contacted"] = today_str
-            # Auto-advance reminder if cadence_days is set
+            # Auto-advance reminder if cadence_days is set; otherwise clear overdue reminder
             cadence = c.get("cadence_days")
             if cadence:
                 try:
@@ -243,6 +253,10 @@ async def add_interaction(contact_id: str, entry: InteractionEntry):
                     c["next_contact_reminder"] = next_date
                 except (ValueError, TypeError):
                     pass
+            else:
+                # No cadence set: default to 28 days from today
+                next_date = (date.today() + timedelta(days=28)).isoformat()
+                c["next_contact_reminder"] = next_date
             save_db(db)
             return c
     raise HTTPException(status_code=404, detail="Contact not found")
@@ -328,6 +342,17 @@ async def create_todo(todo: Todo):
     return new_todo
 
 
+@app.post("/api/todos/reorder")
+async def reorder_todos(req: TodoReorderRequest):
+    db = load_db()
+    order_map = {id_: i for i, id_ in enumerate(req.ordered_ids)}
+    for t in db["todos"]:
+        if t["id"] in order_map:
+            t["sort_order"] = order_map[t["id"]]
+    save_db(db)
+    return {"status": "ok"}
+
+
 @app.put("/api/todos/{todo_id}")
 async def update_todo(todo_id: str, todo: Todo):
     db = load_db()
@@ -336,6 +361,7 @@ async def update_todo(todo_id: str, todo: Todo):
             updated = todo.dict()
             updated["id"] = todo_id
             updated["created_at"] = t.get("created_at", date.today().isoformat())
+            updated["sort_order"] = t.get("sort_order")
             db["todos"][i] = updated
             save_db(db)
             return updated

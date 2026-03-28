@@ -122,9 +122,9 @@ body {
   margin: 0 auto;
   padding: 0 24px;
   height: 60px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
 }
 
 .logo {
@@ -148,6 +148,7 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -566,6 +567,15 @@ body {
   white-space: nowrap;
 }
 
+.contact-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.contact-table th.sortable:hover { color: var(--text-secondary); }
+.contact-table th.sort-active { color: var(--accent); }
+
+.sort-indicator { font-size: 10px; }
+
 .col-check { width: 40px; padding: 11px 8px 11px 16px !important; }
 
 .contact-table td {
@@ -673,20 +683,6 @@ body {
   50% { opacity: .4; }
 }
 
-/* Streak badge */
-.streak-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  background: #fff7ed;
-  color: #c2410c;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-[data-theme="dark"] .streak-badge { background: #271d08; color: #fb923c; }
 
 .text-muted { color: var(--text-muted); font-style: italic; }
 
@@ -720,19 +716,6 @@ body {
 .action-btn.edit:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 .action-btn.log:hover { background: var(--green-light); border-color: var(--green); color: var(--green); }
 
-/* Notes button */
-.notes-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-muted);
-  transition: color var(--transition);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.notes-btn:hover { color: var(--text-primary); background: var(--surface-2); }
 
 /* Empty State */
 .empty-state {
@@ -1573,6 +1556,12 @@ kbd {
 .kanban-col-header-active  { background: var(--orange-light); }
 .kanban-col-header-complete { background: var(--green-light); }
 
+.kanban-col-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .kanban-col-title {
   font-size: 13px;
   font-weight: 700;
@@ -1580,6 +1569,21 @@ kbd {
   letter-spacing: .6px;
   color: var(--text-primary);
 }
+
+.kanban-archive-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+}
+.kanban-col-header:hover .kanban-archive-btn { opacity: 1; }
+.kanban-archive-btn:hover { color: var(--red); border-color: var(--red); }
 
 .kanban-col-count {
   background: rgba(0,0,0,.08);
@@ -1647,6 +1651,20 @@ kbd {
 
 .kanban-card:hover .kanban-card-delete { opacity: 1; }
 .kanban-card-delete:hover { color: var(--red); }
+
+.kanban-card.drop-above { border-top: 2px solid var(--accent); }
+.kanban-card.drop-below { border-bottom: 2px solid var(--accent); }
+
+.crm-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
 
 /* Add card area */
 .kanban-add-wrap {

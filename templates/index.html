@@ -27,9 +27,8 @@
         <button class="help-btn" onclick="openHelp()" title="Help & shortcuts">?</button>
         <button class="btn btn-ghost btn-sm" id="headerImport" onclick="openImport()">⬆ Import</button>
         <button class="btn btn-ghost btn-sm" id="headerExport" onclick="exportContacts()">⬇ Export</button>
-        <button class="btn btn-primary" id="headerAdd" onclick="openModal()">
-          <span>+</span> Add Contact
-        </button>
+        <button class="btn btn-primary" id="headerAdd" onclick="openModal()"><span>+</span> Add Contact</button>
+        <button class="btn btn-primary" id="headerAddTask" onclick="showKanbanInput('todo')" style="display:none"><span>+</span> Add Task</button>
       </div>
     </div>
   </header>
@@ -82,15 +81,6 @@
         <button class="tab" onclick="setFilter('personal', this)">Personal</button>
         <button class="tab" onclick="setFilter('due', this)">Due</button>
       </div>
-      <div class="sort-wrap">
-        <select id="sortSelect" class="sort-select" onchange="renderContacts()">
-          <option value="name">Sort: Name</option>
-          <option value="last_contacted">Sort: Last Contacted</option>
-          <option value="next_contact_reminder">Sort: Next Reminder</option>
-          <option value="category">Sort: Category</option>
-          <option value="created_at">Sort: Recently Added</option>
-        </select>
-      </div>
     </div>
 
     <!-- Bulk Bar -->
@@ -110,12 +100,12 @@
           <thead>
             <tr>
               <th class="col-check"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" /></th>
-              <th>Name</th>
+              <th class="sortable" onclick="setSort('name')" id="th-name">Name <span class="sort-indicator"></span></th>
               <th>Company</th>
               <th>Tags</th>
-              <th>Category</th>
-              <th>Last Contacted</th>
-              <th>Next Reminder</th>
+              <th class="sortable" onclick="setSort('category')" id="th-category">Category <span class="sort-indicator"></span></th>
+              <th class="sortable" onclick="setSort('last_contacted')" id="th-last_contacted">Last Contacted <span class="sort-indicator"></span></th>
+              <th class="sortable" onclick="setSort('next_contact_reminder')" id="th-next_contact_reminder">Next Reminder <span class="sort-indicator"></span></th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -144,8 +134,8 @@
            ondrop="kanbanDrop(event, 'todo')"
            ondragleave="kanbanDragLeave(event)">
         <div class="kanban-col-header kanban-col-header-todo">
-          <span class="kanban-col-title">To Do</span>
-          <span class="kanban-col-count" id="count-todo">0</span>
+          <div class="kanban-col-title-group"><span class="kanban-col-title">To Do</span><span class="kanban-col-count" id="count-todo">0</span></div>
+          <button class="kanban-archive-btn" onclick="archiveColumn('todo')" title="Archive all">Archive</button>
         </div>
         <div class="kanban-cards" id="cards-todo"></div>
         <div class="kanban-add-wrap" id="addwrap-todo">
@@ -167,8 +157,8 @@
            ondrop="kanbanDrop(event, 'active')"
            ondragleave="kanbanDragLeave(event)">
         <div class="kanban-col-header kanban-col-header-active">
-          <span class="kanban-col-title">Active</span>
-          <span class="kanban-col-count" id="count-active">0</span>
+          <div class="kanban-col-title-group"><span class="kanban-col-title">Active</span><span class="kanban-col-count" id="count-active">0</span></div>
+          <button class="kanban-archive-btn" onclick="archiveColumn('active')" title="Archive all">Archive</button>
         </div>
         <div class="kanban-cards" id="cards-active"></div>
         <div class="kanban-add-wrap" id="addwrap-active">
@@ -190,8 +180,8 @@
            ondrop="kanbanDrop(event, 'complete')"
            ondragleave="kanbanDragLeave(event)">
         <div class="kanban-col-header kanban-col-header-complete">
-          <span class="kanban-col-title">Complete</span>
-          <span class="kanban-col-count" id="count-complete">0</span>
+          <div class="kanban-col-title-group"><span class="kanban-col-title">Complete</span><span class="kanban-col-count" id="count-complete">0</span></div>
+          <button class="kanban-archive-btn" onclick="archiveColumn('complete')" title="Archive all">Archive</button>
         </div>
         <div class="kanban-cards" id="cards-complete"></div>
         <div class="kanban-add-wrap" id="addwrap-complete">
@@ -381,10 +371,6 @@
             <div class="help-item">
               <div class="help-item-label">Logging an Interaction</div>
               <div class="help-item-desc">Click the <strong>✓</strong> button on any row to record that you spoke today. This stamps <em>Last Contacted</em> and advances <em>Next Reminder</em> based on your cadence. Open the detail panel to attach a note to the log entry.</div>
-            </div>
-            <div class="help-item">
-              <div class="help-item-label">Streak 🔥</div>
-              <div class="help-item-desc">The number of logged interactions in the last 90 days. A quick signal for how actively you're keeping in touch.</div>
             </div>
           </div>
         </div>
