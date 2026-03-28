@@ -53,8 +53,6 @@ async function fetchStats() {
   const res = await fetch('/api/stats');
   const stats = await res.json();
   document.getElementById('statTotal').textContent = stats.total;
-  document.getElementById('statWork').textContent = stats.work;
-  document.getElementById('statPersonal').textContent = stats.personal;
   document.getElementById('statDue').textContent = stats.due_today;
 
   const dueCard = document.getElementById('statDueCard');
@@ -113,8 +111,6 @@ function getFilteredSorted() {
 
     if (!matchesSearch) return false;
 
-    if (currentFilter === 'work') return c.category === 'work';
-    if (currentFilter === 'personal') return c.category === 'personal';
     if (currentFilter === 'due') {
       return c.next_contact_reminder && c.next_contact_reminder <= today;
     }
@@ -144,7 +140,7 @@ function setSort(col) {
 }
 
 function updateSortHeaders() {
-  ['name', 'category', 'last_contacted', 'next_contact_reminder'].forEach(col => {
+  ['name', 'last_contacted', 'next_contact_reminder'].forEach(col => {
     const th = document.getElementById(`th-${col}`);
     if (!th) return;
     const ind = th.querySelector('.sort-indicator');
@@ -210,12 +206,12 @@ function renderTable() {
         </td>
         <td>${c.company ? escHtml(c.company) : '<span class="text-muted">—</span>'}</td>
         <td>${renderTagChips(c.tags)}</td>
-        <td><span class="badge badge-${c.category}">${c.category}</span></td>
         <td>${c.last_contacted ? formatDate(c.last_contacted) : '<span class="text-muted">—</span>'}</td>
         <td>${reminderCell}</td>
         <td>
           <div class="action-btns">
             <button class="action-btn log" title="Log interaction" onclick="quickLog('${c.id}', event)">✓</button>
+            ${sev ? `<button class="action-btn snooze" title="Snooze 1 week" onclick="snoozeContact('${c.id}', event)">z</button>` : ''}
             <button class="action-btn edit" title="Edit" onclick="openEdit('${c.id}', event)">✏️</button>
             <button class="action-btn delete" title="Delete" onclick="openDelete('${c.id}', '${escHtml(c.name)}', event)">🗑</button>
           </div>
@@ -271,7 +267,7 @@ function renderDetailPanel(c) {
 
   document.getElementById('dpName').textContent = c.name;
 
-  const badges = [`<span class="badge badge-${c.category}">${c.category}</span>`];
+  const badges = [];
   if (sev) badges.push(`<span class="due-badge due-${sev}">Overdue</span>`);
   document.getElementById('dpBadges').innerHTML = badges.join('');
 
@@ -288,7 +284,6 @@ function renderDetailPanel(c) {
     { icon: '🏢', label: 'Company', val: c.company ? escHtml(c.company) : '—' },
     { icon: '🔗', label: 'LinkedIn', val: linkedinVal },
     { icon: '🏷', label: 'Tags', val: c.tags ? renderTagChips(c.tags) : '—' },
-    { icon: '📁', label: 'Category', val: `<span class="badge badge-${c.category}">${c.category}</span>` },
     { icon: '🕐', label: 'Last contact', val: c.last_contacted ? formatDate(c.last_contacted) : '—' },
     { icon: '🔔', label: 'Next reminder', val: c.next_contact_reminder ? formatDate(c.next_contact_reminder) : '—' },
     { icon: '🔁', label: 'Cadence', val: c.cadence_days ? `Every ${c.cadence_days} days` : '—' },
@@ -334,6 +329,7 @@ function renderDetailPanel(c) {
         <textarea id="dpLogNote" class="form-input" placeholder="Optional note…" rows="2"></textarea>
         <div class="log-form-actions">
           <button class="btn btn-success btn-sm" onclick="submitLog('${c.id}')">✓ Log Today</button>
+          ${sev ? `<button class="btn btn-ghost btn-sm" onclick="snoozeContact('${c.id}')">⏱ Snooze 1 week</button>` : ''}
         </div>
       </div>
     </div>
@@ -346,6 +342,14 @@ function renderDetailPanel(c) {
       ${interactionsHtml}
     </div>
   `;
+}
+
+// ===== Snooze =====
+
+async function snoozeContact(id, e) {
+  if (e) e.stopPropagation();
+  const res = await fetch(`/api/contacts/${id}/snooze`, { method: 'POST' });
+  if (res.ok) await refresh();
 }
 
 // ===== Log Interaction =====
@@ -459,7 +463,7 @@ function exportContacts() {
 }
 
 function exportToCSV(data, filename) {
-  const headers = ['id','name','email','phone','linkedin','category','notes','last_contacted','next_contact_reminder','cadence_days','created_at'];
+  const headers = ['id','name','email','phone','linkedin','company','tags','notes','last_contacted','next_contact_reminder','cadence_days','created_at'];
   const rows = data.map(c => headers.map(h => {
     const val = c[h] === null || c[h] === undefined ? '' : String(c[h]);
     return '"' + val.replace(/"/g, '""') + '"';
@@ -477,8 +481,8 @@ function exportToCSV(data, filename) {
 }
 
 function downloadImportTemplate() {
-  const headers = ['name','email','phone','linkedin','category','notes','last_contacted','next_contact_reminder','cadence_days'];
-  const example = ['Jane Smith','jane@example.com','+1 555 000 0001','https://linkedin.com/in/janesmith','personal','Met at conference','2025-03-01','2025-04-01','30'];
+  const headers = ['name','email','phone','linkedin','tags','notes','last_contacted','next_contact_reminder','cadence_days'];
+  const example = ['Jane Smith','jane@example.com','+1 555 000 0001','https://linkedin.com/in/janesmith','investor, advisor','Met at conference','2025-03-01','2025-04-01','30'];
   const csv = [headers.join(','), example.map(v => `"${v}"`).join(',')].join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -580,7 +584,6 @@ function openEdit(id, e) {
   document.getElementById('flinkedin').value = c.linkedin || '';
   document.getElementById('fcompany').value = c.company || '';
   document.getElementById('ftags').value = c.tags || '';
-  document.getElementById('fcategory').value = c.category || 'work';
   document.getElementById('fcadence').value = c.cadence_days || '';
   document.getElementById('flast').value = c.last_contacted || '';
   document.getElementById('fnext').value = c.next_contact_reminder || '';
@@ -620,7 +623,6 @@ async function submitContact(e) {
     linkedin: document.getElementById('flinkedin').value.trim(),
     company: document.getElementById('fcompany').value.trim(),
     tags: document.getElementById('ftags').value.trim(),
-    category: document.getElementById('fcategory').value,
     cadence_days: cadenceVal ? parseInt(cadenceVal, 10) : null,
     last_contacted: document.getElementById('flast').value,
     next_contact_reminder: document.getElementById('fnext').value,
@@ -714,9 +716,7 @@ function getInitials(name) {
 }
 
 function getAvatarClass(c) {
-  if (c.category === 'work') return 'avatar-work';
-  // Vary personal avatars by first letter for visual interest
-  const colors = ['avatar-personal', 'avatar-a', 'avatar-b', 'avatar-c', 'avatar-d', 'avatar-e'];
+  const colors = ['avatar-a', 'avatar-b', 'avatar-c', 'avatar-d', 'avatar-e', 'avatar-personal'];
   const code = (c.name || '').charCodeAt(0) || 0;
   return colors[code % colors.length];
 }
@@ -887,6 +887,11 @@ async function moveTodo(id, status) {
 }
 
 async function deleteTodo(id) {
+  const t = todos.find(x => x.id === id);
+  // Snooze the linked contact so the CRM todo doesn't immediately reappear
+  if (t && t.contact_id) {
+    await fetch(`/api/contacts/${t.contact_id}/snooze`, { method: 'POST' });
+  }
   await fetch(`/api/todos/${id}`, { method: 'DELETE' });
   await fetchTodos();
   renderTodos();
@@ -896,7 +901,14 @@ async function archiveColumn(status) {
   const toDelete = todos.filter(t => t.status === status);
   if (toDelete.length === 0) return;
   if (!confirm(`Archive all ${toDelete.length} item${toDelete.length > 1 ? 's' : ''} in this column?`)) return;
-  await Promise.all(toDelete.map(t => fetch(`/api/todos/${t.id}`, { method: 'DELETE' })));
+  // Snooze any linked contacts so CRM todos don't immediately reappear
+  const snoozeOps = toDelete
+    .filter(t => t.contact_id)
+    .map(t => fetch(`/api/contacts/${t.contact_id}/snooze`, { method: 'POST' }));
+  await Promise.all([
+    ...snoozeOps,
+    ...toDelete.map(t => fetch(`/api/todos/${t.id}`, { method: 'DELETE' })),
+  ]);
   await fetchTodos();
   renderTodos();
 }

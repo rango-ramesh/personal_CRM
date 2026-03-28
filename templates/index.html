@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -42,14 +42,6 @@
         <div class="stat-value" id="statTotal">—</div>
         <div class="stat-label">Total Contacts</div>
       </div>
-      <div class="stat-card accent-blue">
-        <div class="stat-value" id="statWork">—</div>
-        <div class="stat-label">Work</div>
-      </div>
-      <div class="stat-card accent-purple">
-        <div class="stat-value" id="statPersonal">—</div>
-        <div class="stat-label">Personal</div>
-      </div>
       <div class="stat-card accent-orange" id="statDueCard">
         <div class="stat-value" id="statDue">—</div>
         <div class="stat-label">Due for Follow-up</div>
@@ -77,8 +69,6 @@
       </div>
       <div class="filter-tabs">
         <button class="tab active" onclick="setFilter('all', this)">All</button>
-        <button class="tab" onclick="setFilter('work', this)">Work</button>
-        <button class="tab" onclick="setFilter('personal', this)">Personal</button>
         <button class="tab" onclick="setFilter('due', this)">Due</button>
       </div>
     </div>
@@ -103,7 +93,6 @@
               <th class="sortable" onclick="setSort('name')" id="th-name">Name <span class="sort-indicator"></span></th>
               <th>Company</th>
               <th>Tags</th>
-              <th class="sortable" onclick="setSort('category')" id="th-category">Category <span class="sort-indicator"></span></th>
               <th class="sortable" onclick="setSort('last_contacted')" id="th-last_contacted">Last Contacted <span class="sort-indicator"></span></th>
               <th class="sortable" onclick="setSort('next_contact_reminder')" id="th-next_contact_reminder">Next Reminder <span class="sort-indicator"></span></th>
               <th>Actions</th>
@@ -257,13 +246,6 @@
             <input type="text" id="ftags" class="form-input" placeholder="investor, mentor, client" />
           </div>
           <div class="form-group">
-            <label class="form-label">Category <span class="field-hint-icon" data-hint="Tags this contact as Work or Personal. Used to filter your list and colour-code avatars.">?</span></label>
-            <select id="fcategory" class="form-input">
-              <option value="work">Work</option>
-              <option value="personal">Personal</option>
-            </select>
-          </div>
-          <div class="form-group">
             <label class="form-label">Cadence (days) <span class="field-hint-icon" data-hint="Optional. How often you want to stay in touch — e.g. 14 = every 2 weeks. Leave blank for no automatic reminder cadence. When set, the Next Reminder advances by this many days each time you log an interaction.">?</span></label>
             <input type="number" id="fcadence" class="form-input" placeholder="Optional — e.g. 30" min="1" oninput="autoFillReminder()" />
           </div>
@@ -290,9 +272,6 @@
 
   <!-- Field Hint Tooltip -->
   <div id="fieldHintTooltip"></div>
-
-  <!-- Notes Popover -->
-  <div class="notes-popover" id="notesPopover" style="display:none"></div>
 
   <!-- Delete Confirm Modal -->
   <div class="modal-overlay" id="deleteOverlay" onclick="closeDelete(event)">
@@ -327,7 +306,7 @@
         >
           <div class="drop-icon">📂</div>
           <div class="drop-title">Drop a CSV file here</div>
-          <div class="import-hint">or click to browse — columns: name, email, phone, linkedin, category, notes, last_contacted, next_contact_reminder, cadence_days</div>
+          <div class="import-hint">or click to browse — columns: name, email, phone, linkedin, tags, notes, last_contacted, next_contact_reminder, cadence_days</div>
           <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="handleFileInput(this)" />
         </div>
         <div class="import-status" id="importStatus"></div>
@@ -379,12 +358,12 @@
           <div class="help-section-title">Views &amp; Filters</div>
           <div class="help-items">
             <div class="help-item">
-              <div class="help-item-label">Table / Card view</div>
-              <div class="help-item-desc">Toggle between a compact table and a card grid using the ☰ ⊞ buttons. Click any row or card to open the full detail panel.</div>
+              <div class="help-item-label">Filters</div>
+              <div class="help-item-desc">Use the <strong>All / Due</strong> tabs to narrow your list. <em>Due</em> shows everyone whose reminder date has passed. Use tags to organise contacts by type (e.g. VC, Founder, Advisor).</div>
             </div>
             <div class="help-item">
-              <div class="help-item-label">Filters</div>
-              <div class="help-item-desc">Use the <strong>All / Work / Personal / Due</strong> tabs to narrow your list. <em>Due</em> shows everyone whose reminder date has passed.</div>
+              <div class="help-item-label">Sorting</div>
+              <div class="help-item-desc">Click any column header (Name, Last Contacted, Next Reminder) to sort by that column. Click again to reverse the order.</div>
             </div>
             <div class="help-item">
               <div class="help-item-label">Recently Added strip</div>
@@ -402,7 +381,7 @@
             </div>
             <div class="help-item">
               <div class="help-item-label">Import</div>
-              <div class="help-item-desc">Upload a CSV with columns: <code>name, email, phone, linkedin, category, notes, last_contacted, next_contact_reminder, cadence_days</code>. Download the template for a ready-to-fill example.</div>
+              <div class="help-item-desc">Upload a CSV with columns: <code>name, email, phone, linkedin, tags, notes, last_contacted, next_contact_reminder, cadence_days</code>. Download the template for a ready-to-fill example.</div>
             </div>
           </div>
         </div>
@@ -415,16 +394,16 @@
               <div class="help-item-desc">Use the <strong>Contacts / To-Do</strong> toggle in the header to switch between the two pages.</div>
             </div>
             <div class="help-item">
-              <div class="help-item-label">Linking tasks to contacts</div>
-              <div class="help-item-desc">When adding or editing a task you can link it to a contact. Their name will appear on the task row for context.</div>
+              <div class="help-item-label">CRM sync</div>
+              <div class="help-item-desc">Contacts with an overdue reminder automatically appear as tasks in the To Do column, marked with a <strong>CRM</strong> badge. Logging an interaction or snoozing from the Contacts page will remove the task. Deleting or archiving a CRM task snoozes the contact for 1 week.</div>
             </div>
             <div class="help-item">
-              <div class="help-item-label">Priority</div>
-              <div class="help-item-desc">Tasks are colour-coded: <strong style="color:var(--red)">High</strong>, <strong style="color:var(--orange)">Medium</strong>, <strong style="color:var(--green)">Low</strong>. Sort by priority to tackle the most important things first.</div>
+              <div class="help-item-label">Drag &amp; drop</div>
+              <div class="help-item-desc">Drag cards between columns to update their status, or drag within a column to reorder them. The order is saved automatically.</div>
             </div>
             <div class="help-item">
-              <div class="help-item-label">Overdue tasks</div>
-              <div class="help-item-desc">Tasks past their due date and not yet completed are highlighted red and shown in the Overdue filter.</div>
+              <div class="help-item-label">Archive column</div>
+              <div class="help-item-desc">Hover over a column header to reveal the <em>Archive</em> button, which deletes all tasks in that column at once.</div>
             </div>
           </div>
         </div>

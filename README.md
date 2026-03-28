@@ -6,15 +6,18 @@ A lightweight, modern personal CRM that runs entirely on your Mac. Track relatio
 
 ## Features
 
-- **Contact management** — add, edit, delete with fields for email, phone, category, notes
+- **Contact management** — add, edit, delete with fields for email, phone, LinkedIn, company, tags, and notes
+- **Tags** — organise contacts with free-form labels (e.g. `VC`, `Founder`, `Advisor`) shown as chips in the table
 - **Interaction log** — record every conversation with optional notes and timestamps
-- **Cadence & reminders** — set how often to reach out; next reminder auto-advances when you log a contact
+- **Cadence & reminders** — set how often to reach out; next reminder auto-advances when you log an interaction
 - **Overdue highlighting** — yellow (1–7 days late), orange (8–28 days), red (29+ days)
-- **Streak tracking** — see how actively you've kept in touch (last 90 days)
-- **Search, filter & sort** — by name, category, date, or overdue status
-- **Table & card views** — switch between a compact table and a visual card grid
-- **Import / Export** — CSV import with drag-and-drop, full CSV export
-- **Keyboard shortcuts** — `N` new contact, `/` search, `Esc` close
+- **Snooze** — push a reminder forward by 1 week without logging a fake interaction
+- **CRM → To-Do sync** — overdue contacts automatically appear as tasks in the To-Do board
+- **Kanban To-Do board** — three columns (To Do / Active / Complete) with drag-and-drop reordering within and between columns; hover a column header to archive all its items at once
+- **Search, filter & sort** — search across all fields; filter by All / Due; click column headers to sort
+- **Bulk actions** — select multiple contacts to bulk-delete or export just the selection
+- **Import / Export** — CSV import with drag-and-drop, full CSV export; duplicate names are blocked on import
+- **Keyboard shortcuts** — `N` new contact/task, `/` search, `Esc` close
 
 ---
 

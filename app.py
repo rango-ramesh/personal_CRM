@@ -83,7 +83,7 @@ async def export_contacts():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "id", "name", "email", "phone", "linkedin", "company", "tags", "category",
+        "id", "name", "email", "phone", "linkedin", "company", "tags",
         "notes", "last_contacted", "next_contact_reminder",
         "cadence_days", "created_at"
     ])
@@ -96,7 +96,6 @@ async def export_contacts():
             c.get("linkedin", ""),
             c.get("company", ""),
             c.get("tags", ""),
-            c.get("category", ""),
             c.get("notes", ""),
             c.get("last_contacted", ""),
             c.get("next_contact_reminder", ""),
@@ -150,7 +149,6 @@ async def import_contacts(file: UploadFile = File(...)):
             "linkedin": (row.get("linkedin") or "").strip(),
             "company": (row.get("company") or "").strip(),
             "tags": (row.get("tags") or "").strip(),
-            "category": (row.get("category") or "work").strip(),
             "notes": (row.get("notes") or "").strip(),
             "last_contacted": (row.get("last_contacted") or "").strip(),
             "next_contact_reminder": (row.get("next_contact_reminder") or "").strip(),
@@ -228,6 +226,19 @@ async def delete_contact(contact_id: str):
     return {"status": "deleted"}
 
 
+# ── Snooze ──────────────────────────────────────────────────────────────────
+
+@app.post("/api/contacts/{contact_id}/snooze")
+async def snooze_contact(contact_id: str):
+    db = load_db()
+    for c in db["contacts"]:
+        if c["id"] == contact_id:
+            c["next_contact_reminder"] = (date.today() + timedelta(days=7)).isoformat()
+            save_db(db)
+            return c
+    raise HTTPException(status_code=404, detail="Contact not found")
+
+
 # ── Interactions ────────────────────────────────────────────────────────────
 
 @app.post("/api/contacts/{contact_id}/interactions")
@@ -287,8 +298,6 @@ async def get_stats():
     today_str = date.today().isoformat()
 
     total = len(contacts)
-    work = sum(1 for c in contacts if c.get("category") == "work")
-    personal = sum(1 for c in contacts if c.get("category") == "personal")
 
     due_mild = 0
     due_moderate = 0
@@ -314,8 +323,6 @@ async def get_stats():
 
     return {
         "total": total,
-        "work": work,
-        "personal": personal,
         "due_today": due_today,
         "due_mild": due_mild,
         "due_moderate": due_moderate,

@@ -43,59 +43,6 @@
   --severe-border: #f87171;
 }
 
-/* ===== Dark Mode ===== */
-[data-theme="dark"] {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface-2: #212533;
-  --surface-3: #2a2e3d;
-  --border: #2e3244;
-  --border-hover: #404666;
-  --text-primary: #e8eaf0;
-  --text-secondary: #8b92a8;
-  --text-muted: #555e78;
-  --accent: #6366f1;
-  --accent-light: #1e2040;
-  --accent-hover: #818cf8;
-  --blue: #38bdf8;
-  --blue-light: #0c2233;
-  --purple: #a78bfa;
-  --purple-light: #1e1635;
-  --orange: #fbbf24;
-  --orange-light: #271d08;
-  --red: #f87171;
-  --red-light: #2d1515;
-  --green: #34d399;
-  --green-light: #0d2620;
-  --yellow: #facc15;
-  --yellow-light: #2a230a;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.2);
-  --shadow-lg: 0 16px 40px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.3);
-
-  --mild-bg: #1e1c07;
-  --mild-border: #7a6e12;
-  --moderate-bg: #1f1208;
-  --moderate-border: #9a4a18;
-  --severe-bg: #1f0a0a;
-  --severe-border: #962020;
-}
-
-[data-theme="dark"] .avatar-work { background: #0c2233; color: #38bdf8; }
-[data-theme="dark"] .avatar-personal { background: #1e1635; color: #a78bfa; }
-[data-theme="dark"] .badge-work { background: #0c2233; color: #38bdf8; }
-[data-theme="dark"] .badge-personal { background: #1e1635; color: #a78bfa; }
-[data-theme="dark"] .recent-mini-card { background: #21253a; }
-[data-theme="dark"] .contact-table thead { background: #1a1d27; }
-[data-theme="dark"] .contact-table tbody tr:hover { background: #21253a; }
-[data-theme="dark"] .contact-card { background: #1a1d27; }
-[data-theme="dark"] .contact-card:hover { background: #21253a; }
-[data-theme="dark"] .detail-panel { background: #1a1d27; border-left-color: #2e3244; }
-[data-theme="dark"] .drop-zone { background: #12151e; border-color: #2e3244; }
-[data-theme="dark"] .drop-zone.drag-over { background: #1a1d27; border-color: #6366f1; }
-[data-theme="dark"] kbd { background: #2a2e3d; border-color: #404666; color: #8b92a8; }
-[data-theme="dark"] .bulk-bar { background: #21253a; border-color: #2e3244; }
-
 html, body { height: 100%; }
 
 body {
@@ -251,15 +198,6 @@ body {
   transform: scale(1.08);
 }
 
-[data-theme="dark"] .theme-radar-btn {
-  border-color: var(--accent);
-}
-
-[data-theme="dark"] .theme-radar-btn::before,
-[data-theme="dark"] .theme-radar-btn::after {
-  border-color: var(--accent);
-}
-
 /* ===== Main ===== */
 .main {
   max-width: 1280px;
@@ -329,10 +267,6 @@ body {
 .sev-chip.mild { background: var(--yellow-light); color: #a16207; }
 .sev-chip.moderate { background: var(--orange-light); color: #c2410c; }
 .sev-chip.severe { background: var(--red-light); color: #b91c1c; }
-
-[data-theme="dark"] .sev-chip.mild { color: #facc15; }
-[data-theme="dark"] .sev-chip.moderate { color: #fb923c; }
-[data-theme="dark"] .sev-chip.severe { color: #f87171; }
 
 /* ===== Recently Added Strip ===== */
 .section-label {
@@ -628,7 +562,6 @@ body {
   text-transform: uppercase;
 }
 
-.avatar-work { background: var(--blue-light); color: var(--blue); }
 .avatar-personal { background: var(--purple-light); color: var(--purple); }
 .avatar-a { background: #fce7f3; color: #db2777; }
 .avatar-b { background: #dbeafe; color: #2563eb; }
@@ -647,9 +580,6 @@ body {
   text-transform: capitalize;
 }
 
-.badge-work { background: var(--blue-light); color: var(--blue); }
-.badge-personal { background: var(--purple-light); color: var(--purple); }
-
 /* Due indicator variants */
 .due-badge {
   display: inline-flex;
@@ -664,10 +594,6 @@ body {
 .due-badge.due-mild { background: var(--yellow-light); color: #a16207; }
 .due-badge.due-moderate { background: var(--orange-light); color: #c2410c; }
 .due-badge.due-severe { background: var(--red-light); color: #b91c1c; }
-
-[data-theme="dark"] .due-badge.due-mild { color: #facc15; }
-[data-theme="dark"] .due-badge.due-moderate { color: #fb923c; }
-[data-theme="dark"] .due-badge.due-severe { color: #f87171; }
 
 .due-dot {
   width: 6px;
@@ -715,6 +641,7 @@ body {
 .action-btn.delete:hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
 .action-btn.edit:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 .action-btn.log:hover { background: var(--green-light); border-color: var(--green); color: var(--green); }
+.action-btn.snooze:hover { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
 
 
 /* Empty State */
