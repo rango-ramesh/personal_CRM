@@ -146,9 +146,11 @@ function updateSortHeaders() {
     const ind = th.querySelector('.sort-indicator');
     if (currentSort === col) {
       ind.textContent = sortDir === 1 ? ' ▲' : ' ▼';
+      ind.classList.add('active');
       th.classList.add('sort-active');
     } else {
-      ind.textContent = '';
+      ind.textContent = ' ⇅';
+      ind.classList.remove('active');
       th.classList.remove('sort-active');
     }
   });
@@ -166,6 +168,7 @@ function setFilter(filter, btn) {
 function renderContacts() {
   renderTable();
   updateBulkBar();
+  updateSortHeaders();
 }
 
 function renderTable() {

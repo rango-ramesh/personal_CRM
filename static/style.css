@@ -505,10 +505,11 @@ body {
   cursor: pointer;
   user-select: none;
 }
-.contact-table th.sortable:hover { color: var(--text-secondary); }
+.contact-table th.sortable:hover { color: var(--text-primary); }
 .contact-table th.sort-active { color: var(--accent); }
 
-.sort-indicator { font-size: 10px; }
+.sort-indicator { font-size: 10px; opacity: 0.3; }
+.sort-indicator.active { opacity: 1; }
 
 .col-check { width: 40px; padding: 11px 8px 11px 16px !important; }
 
