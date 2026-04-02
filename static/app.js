@@ -8,6 +8,10 @@ let detailContactId = null;
 let deleteTargetId = null;
 
 let todos = [];
+let projects = [];
+let editProjectId = null;
+let projectCollabIds = [];
+let editingTodoId = null;
 let currentPage = 'contacts';
 
 const today = new Date().toISOString().split('T')[0];
@@ -15,26 +19,32 @@ const today = new Date().toISOString().split('T')[0];
 // ===== API + Refresh =====
 
 async function refresh() {
-  await Promise.all([fetchContacts(), fetchStats(), fetchTodos()]);
+  await Promise.all([fetchContacts(), fetchStats(), fetchTodos(), fetchProjects()]);
   await syncCRMTodos();
   renderRecentlyAdded();
   if (currentPage === 'todos') renderTodos();
+  if (currentPage === 'projects') renderProjects();
 }
 
 // ===== Page Navigation =====
 
+function el(id) { return document.getElementById(id); }
+
 function setPage(page) {
   currentPage = page;
-  const isContacts = page === 'contacts';
-  document.getElementById('navContacts').classList.toggle('active', isContacts);
-  document.getElementById('navTodos').classList.toggle('active', !isContacts);
-  document.getElementById('contactsPage').style.display = isContacts ? '' : 'none';
-  document.getElementById('todoPage').style.display = isContacts ? 'none' : '';
-  document.getElementById('headerImport').style.display = isContacts ? '' : 'none';
-  document.getElementById('headerExport').style.display = isContacts ? '' : 'none';
-  document.getElementById('headerAdd').style.display = isContacts ? '' : 'none';
-  document.getElementById('headerAddTask').style.display = isContacts ? 'none' : '';
-  if (!isContacts) renderTodos();
+  el('navContacts').classList.toggle('active', page === 'contacts');
+  el('navTodos').classList.toggle('active', page === 'todos');
+  el('navProjects')?.classList.toggle('active', page === 'projects');
+  el('contactsPage').style.display = page === 'contacts' ? '' : 'none';
+  el('todoPage').style.display = page === 'todos' ? '' : 'none';
+  if (el('projectsPage')) el('projectsPage').style.display = page === 'projects' ? '' : 'none';
+  el('headerImport').style.display = page === 'contacts' ? '' : 'none';
+  el('headerExport').style.display = page === 'contacts' ? '' : 'none';
+  el('headerAdd').style.display = page === 'contacts' ? '' : 'none';
+  el('headerAddTask').style.display = page === 'todos' ? '' : 'none';
+  if (el('headerAddProject')) el('headerAddProject').style.display = page === 'projects' ? '' : 'none';
+  if (page === 'todos') renderTodos();
+  if (page === 'projects') renderProjects();
 }
 
 async function fetchContacts() {
@@ -144,6 +154,7 @@ function updateSortHeaders() {
     const th = document.getElementById(`th-${col}`);
     if (!th) return;
     const ind = th.querySelector('.sort-indicator');
+    if (!ind) return;
     if (currentSort === col) {
       ind.textContent = sortDir === 1 ? ' ▲' : ' ▼';
       ind.classList.add('active');
@@ -208,7 +219,7 @@ function renderTable() {
           </div>
         </td>
         <td>${c.company ? escHtml(c.company) : '<span class="text-muted">—</span>'}</td>
-        <td>${renderTagChips(c.tags)}</td>
+        <td>${renderTagChips(c.tags)}${(() => { const p = c.project_id && projects.find(x => x.id === c.project_id); return p ? `<span class="proj-task-badge">${escHtml(p.title)}</span>` : ''; })()}</td>
         <td>${c.last_contacted ? formatDate(c.last_contacted) : '<span class="text-muted">—</span>'}</td>
         <td>${reminderCell}</td>
         <td>
@@ -287,6 +298,7 @@ function renderDetailPanel(c) {
     { icon: '🏢', label: 'Company', val: c.company ? escHtml(c.company) : '—' },
     { icon: '🔗', label: 'LinkedIn', val: linkedinVal },
     { icon: '🏷', label: 'Tags', val: c.tags ? renderTagChips(c.tags) : '—' },
+    { icon: '◈', label: 'Project', val: (() => { const p = c.project_id && projects.find(x => x.id === c.project_id); return p ? `<span class="proj-task-badge">${escHtml(p.title)}</span>` : '—'; })() },
     { icon: '🕐', label: 'Last contact', val: c.last_contacted ? formatDate(c.last_contacted) : '—' },
     { icon: '🔔', label: 'Next reminder', val: c.next_contact_reminder ? formatDate(c.next_contact_reminder) : '—' },
     { icon: '🔁', label: 'Cadence', val: c.cadence_days ? `Every ${c.cadence_days} days` : '—' },
@@ -566,11 +578,20 @@ async function importFile(file) {
 
 // ===== Add / Edit Modal =====
 
+function populateProjectSelect(selectId, selectedId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const current = selectedId || '';
+  sel.innerHTML = `<option value="">No project</option>` +
+    projects.map(p => `<option value="${p.id}"${p.id === current ? ' selected' : ''}>${escHtml(p.title)}</option>`).join('');
+}
+
 function openModal() {
   document.getElementById('modalTitle').textContent = 'Add Contact';
   document.getElementById('submitBtn').textContent = 'Save Contact';
   document.getElementById('contactForm').reset();
   document.getElementById('contactId').value = '';
+  populateProjectSelect('fproject', '');
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -591,6 +612,7 @@ function openEdit(id, e) {
   document.getElementById('flast').value = c.last_contacted || '';
   document.getElementById('fnext').value = c.next_contact_reminder || '';
   document.getElementById('fnotes').value = c.notes || '';
+  populateProjectSelect('fproject', c.project_id || '');
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -630,6 +652,7 @@ async function submitContact(e) {
     last_contacted: document.getElementById('flast').value,
     next_contact_reminder: document.getElementById('fnext').value,
     notes: document.getElementById('fnotes').value.trim(),
+    project_id: document.getElementById('fproject').value || null,
   };
 
   const url = id ? `/api/contacts/${id}` : '/api/contacts';
@@ -726,6 +749,13 @@ function getAvatarClass(c) {
 
 // ===== Keyboard Shortcuts =====
 
+document.addEventListener('click', e => {
+  const dd = document.getElementById('collabDropdown');
+  if (dd && !dd.contains(e.target) && e.target.id !== 'collabSearch') {
+    dd.style.display = 'none';
+  }
+});
+
 document.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName.toLowerCase();
   const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
@@ -739,6 +769,10 @@ document.addEventListener('keydown', e => {
       document.getElementById('importOverlay').classList.remove('open');
     } else if (document.getElementById('helpOverlay').classList.contains('open')) {
       document.getElementById('helpOverlay').classList.remove('open');
+    } else if (document.getElementById('projectModalOverlay').classList.contains('open')) {
+      document.getElementById('projectModalOverlay').classList.remove('open');
+    } else if (editingTodoId) {
+      cancelTodoEdit();
     } else if (detailContactId) {
       closeDetail();
     }
@@ -750,6 +784,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'n' || e.key === 'N') {
     e.preventDefault();
     if (currentPage === 'todos') showKanbanInput('todo');
+    else if (currentPage === 'projects') openProjectModal();
     else openModal();
   }
 
@@ -776,14 +811,14 @@ async function syncCRMTodos() {
       ops.push(fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: `Connect with ${c.name}`, status: 'todo', contact_id: c.id }),
+        body: JSON.stringify({ title: `Connect with ${c.name}`, status: 'todo', contact_id: c.id, project_id: c.project_id || null }),
       }));
     }
   }
 
-  // Remove todos for contacts no longer overdue
+  // Remove todos for contacts no longer overdue (leave completed ones in place)
   for (const t of crmTodos) {
-    if (!overdueIds.has(t.contact_id)) {
+    if (!overdueIds.has(t.contact_id) && t.status !== 'complete') {
       ops.push(fetch(`/api/todos/${t.id}`, { method: 'DELETE' }));
     }
   }
@@ -821,7 +856,32 @@ function renderTodos() {
     cols[status].sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity));
     document.getElementById(`count-${status}`).textContent = cols[status].length;
     document.getElementById(`cards-${status}`).innerHTML = cols[status].map(t => {
+      // Edit mode
+      if (editingTodoId === t.id) {
+        const projectOptions = projects.map(p =>
+          `<option value="${p.id}"${t.project_id === p.id ? ' selected' : ''}>${escHtml(p.title)}</option>`
+        ).join('');
+        return `
+          <div class="kanban-card kanban-card-editing" data-id="${t.id}">
+            <textarea class="kanban-textarea" id="edit-title-${t.id}" rows="2"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();saveTodoEdit('${t.id}')}if(event.key==='Escape')cancelTodoEdit()"
+            >${escHtml(t.title)}</textarea>
+            <select class="kanban-edit-select" id="edit-project-${t.id}">
+              <option value="">No project</option>
+              ${projectOptions}
+            </select>
+            <div class="kanban-input-actions">
+              <button class="btn btn-primary btn-sm" onclick="saveTodoEdit('${t.id}')">Save</button>
+              <button class="kanban-input-cancel" onclick="cancelTodoEdit()">✕</button>
+            </div>
+          </div>
+        `;
+      }
+      // Normal card
       const crmBadge = t.contact_id ? `<span class="crm-badge">CRM</span>` : '';
+      const proj = t.project_id ? projects.find(p => p.id === t.project_id) : null;
+      const projBadge = proj ? `<span class="proj-task-badge">${escHtml(proj.title)}</span>` : '';
+      const badges = (crmBadge || projBadge) ? `<div class="kanban-card-badges">${crmBadge}${projBadge}</div>` : '';
       return `
         <div class="kanban-card" draggable="true" data-id="${t.id}"
              ondragstart="kanbanDragStart(event,'${t.id}')"
@@ -829,8 +889,14 @@ function renderTodos() {
              ondragover="cardDragOver(event)"
              ondragleave="cardDragLeave(event)"
              ondrop="cardDrop(event,'${status}')">
-          ${crmBadge}<span class="kanban-card-title">${escHtml(t.title)}</span>
-          <button class="kanban-card-delete" onclick="deleteTodo('${t.id}')" title="Delete">✕</button>
+          <div class="kanban-card-main">
+            ${badges}
+            <span class="kanban-card-title">${escHtml(t.title)}</span>
+          </div>
+          <div class="kanban-card-btns">
+            <button class="kanban-card-edit" onclick="startTodoEdit('${t.id}')" title="Edit">✎</button>
+            <button class="kanban-card-delete" onclick="deleteTodo('${t.id}')" title="Delete">✕</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -840,13 +906,13 @@ function renderTodos() {
 // Add card UI
 function showKanbanInput(status) {
   document.getElementById(`inputbox-${status}`).style.display = 'block';
-  document.querySelector(`#addwrap-${status} .kanban-add-btn`).style.display = 'none';
+  document.querySelector(`#addwrap-${status} .kanban-add-btn`)?.style.setProperty('display', 'none');
   document.getElementById(`input-${status}`).focus();
 }
 
 function hideKanbanInput(status) {
   document.getElementById(`inputbox-${status}`).style.display = 'none';
-  document.querySelector(`#addwrap-${status} .kanban-add-btn`).style.display = '';
+  document.querySelector(`#addwrap-${status} .kanban-add-btn`)?.style.setProperty('display', '');
   document.getElementById(`input-${status}`).value = '';
 }
 
@@ -877,7 +943,7 @@ async function moveTodo(id, status) {
     await fetch(`/api/todos/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: t.title, status, contact_id: t.contact_id || null }),
+      body: JSON.stringify({ title: t.title, status, contact_id: t.contact_id || null, project_id: t.project_id || null }),
     });
   }
   // Append to end of target column
@@ -889,15 +955,45 @@ async function moveTodo(id, status) {
   await reorderTodos(colIds);
 }
 
-async function deleteTodo(id) {
+function startTodoEdit(id) {
+  editingTodoId = id;
+  renderTodos();
+  const ta = document.getElementById(`edit-title-${id}`);
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+async function saveTodoEdit(id) {
   const t = todos.find(x => x.id === id);
-  // Snooze the linked contact so the CRM todo doesn't immediately reappear
-  if (t && t.contact_id) {
-    await fetch(`/api/contacts/${t.contact_id}/snooze`, { method: 'POST' });
-  }
-  await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+  if (!t) return;
+  const title = (document.getElementById(`edit-title-${id}`)?.value ?? '').trim();
+  if (!title) return;
+  const project_id = document.getElementById(`edit-project-${id}`)?.value || null;
+  await fetch(`/api/todos/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, status: t.status, contact_id: t.contact_id || null, project_id }),
+  });
+  editingTodoId = null;
   await fetchTodos();
   renderTodos();
+}
+
+function cancelTodoEdit() {
+  editingTodoId = null;
+  renderTodos();
+}
+
+async function deleteTodo(id) {
+  const t = todos.find(x => x.id === id);
+  if (t && t.contact_id) {
+    // CRM task: snooze contact and move to complete rather than deleting
+    await fetch(`/api/contacts/${t.contact_id}/snooze`, { method: 'POST' });
+    await moveTodo(id, 'complete');
+  } else {
+    await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+    await fetchTodos();
+    renderTodos();
+  }
 }
 
 async function archiveColumn(status) {
@@ -918,6 +1014,7 @@ async function archiveColumn(status) {
 
 // Drag and drop
 function kanbanDragStart(event, id) {
+  if (editingTodoId) { event.preventDefault(); return; }
   dragTodoId = id;
   event.dataTransfer.effectAllowed = 'move';
   setTimeout(() => event.target.classList.add('dragging'), 0);
@@ -989,7 +1086,7 @@ async function cardDrop(event, status) {
     await fetch(`/api/todos/${dragTodoId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: dragged.title, status, contact_id: dragged.contact_id || null }),
+      body: JSON.stringify({ title: dragged.title, status, contact_id: dragged.contact_id || null, project_id: dragged.project_id || null }),
     });
   }
 
@@ -1005,6 +1102,171 @@ async function reorderTodos(orderedIds) {
   });
   await fetchTodos();
   renderTodos();
+}
+
+// ===== Projects =====
+
+async function fetchProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data)) projects = data;
+  } catch (e) { /* server not yet restarted */ }
+}
+
+function renderProjects() {
+  if (currentPage !== 'projects') return;
+  const grid = document.getElementById('projectsGrid');
+  const empty = document.getElementById('projectsEmpty');
+  if (!projects.length) {
+    grid.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  const statusOrder = { active: 0, on_hold: 1, completed: 2 };
+  const sorted = [...projects].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+  grid.innerHTML = sorted.map(p => {
+    const statusLabel = { active: 'Active', on_hold: 'On Hold', completed: 'Completed' }[p.status] || p.status;
+    const statusKey = { active: 'active', on_hold: 'hold', completed: 'done' }[p.status] || '';
+
+    const dateParts = [p.start_date && formatDate(p.start_date), p.end_date && formatDate(p.end_date)].filter(Boolean);
+    const dateStr = dateParts.join(' → ');
+
+    const collabIds = Array.isArray(p.collaborators) ? p.collaborators : [];
+    const collabContacts = collabIds.map(id => contacts.find(c => c.id === id)).filter(Boolean);
+    const MAX_VIS = 5;
+    const visible = collabContacts.slice(0, MAX_VIS);
+    const overflow = collabContacts.length - MAX_VIS;
+    const collabHtml = collabContacts.length ? `
+      <div class="proj-card-collabs">
+        ${visible.map(c => `<div class="proj-collab-av ${getAvatarClass(c)}" title="${escHtml(c.name)}">${getInitials(c.name)}</div>`).join('')}
+        ${overflow > 0 ? `<div class="proj-collab-av proj-collab-more">+${overflow}</div>` : ''}
+      </div>` : '<div class="proj-card-collabs"></div>';
+
+    return `
+      <div class="proj-card proj-card-${p.status || 'active'}">
+        <div class="proj-card-meta">
+          <span class="proj-status-pip proj-pip-${statusKey}"></span>
+          <span class="proj-status-lbl proj-lbl-${statusKey}">${statusLabel}</span>
+          ${dateStr ? `<span class="proj-card-dates">${dateStr}</span>` : ''}
+        </div>
+        <div class="proj-card-title">${escHtml(p.title)}</div>
+        ${p.description ? `<div class="proj-card-desc">${escHtml(p.description)}</div>` : ''}
+        <div class="proj-card-footer">
+          ${collabHtml}
+          <div class="proj-card-btns">
+            <button class="proj-icon-btn" onclick="openProjectModal('${p.id}')" title="Edit">✎</button>
+            <button class="proj-icon-btn proj-icon-btn-del" onclick="deleteProject('${p.id}')" title="Delete">✕</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openProjectModal(id) {
+  editProjectId = id || null;
+  const p = id ? projects.find(x => x.id === id) : null;
+  document.getElementById('projectModalTitle').textContent = p ? 'Edit Project' : 'New Project';
+  document.getElementById('pTitle').value = p ? p.title : '';
+  document.getElementById('pDescription').value = p ? p.description || '' : '';
+  document.getElementById('pStartDate').value = p ? p.start_date || '' : '';
+  document.getElementById('pEndDate').value = p ? p.end_date || '' : '';
+  document.getElementById('pStatus').value = p ? p.status || 'active' : 'active';
+  projectCollabIds = p && Array.isArray(p.collaborators) ? [...p.collaborators] : [];
+  renderCollabChips();
+  document.getElementById('collabSearch').value = '';
+  document.getElementById('collabDropdown').style.display = 'none';
+  document.getElementById('projectModalOverlay').classList.add('open');
+  document.getElementById('pTitle').focus();
+}
+
+function closeProjectModal(event) {
+  if (event && event.target !== document.getElementById('projectModalOverlay')) return;
+  document.getElementById('projectModalOverlay').classList.remove('open');
+}
+
+async function submitProject(event) {
+  event.preventDefault();
+  const payload = {
+    title: document.getElementById('pTitle').value.trim(),
+    description: document.getElementById('pDescription').value.trim(),
+    start_date: document.getElementById('pStartDate').value,
+    end_date: document.getElementById('pEndDate').value,
+    collaborators: projectCollabIds,
+    status: document.getElementById('pStatus').value,
+  };
+  if (!payload.title) return;
+  const url = editProjectId ? `/api/projects/${editProjectId}` : '/api/projects';
+  const method = editProjectId ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (res.ok) {
+    document.getElementById('projectModalOverlay').classList.remove('open');
+    await fetchProjects();
+    renderProjects();
+  }
+}
+
+async function deleteProject(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
+  await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+  await fetchProjects();
+  renderProjects();
+}
+
+// ── Collaborator picker ──────────────────────────────────────────────────────
+
+function searchCollabs(query) {
+  const dropdown = document.getElementById('collabDropdown');
+  if (!query.trim()) { dropdown.style.display = 'none'; return; }
+  const q = query.toLowerCase();
+  const matches = contacts
+    .filter(c => !projectCollabIds.includes(c.id) && c.name.toLowerCase().includes(q))
+    .slice(0, 6);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matches.map(c => `
+    <div class="collab-option" onclick="addCollab('${c.id}')">
+      <div class="avatar ${getAvatarClass(c)} collab-option-av">${getInitials(c.name)}</div>
+      <span class="collab-option-name">${escHtml(c.name)}</span>
+      ${c.company ? `<span class="collab-option-co">${escHtml(c.company)}</span>` : ''}
+    </div>`).join('');
+  dropdown.style.display = '';
+}
+
+function addCollab(contactId) {
+  if (!projectCollabIds.includes(contactId)) projectCollabIds.push(contactId);
+  renderCollabChips();
+  document.getElementById('collabSearch').value = '';
+  document.getElementById('collabDropdown').style.display = 'none';
+  document.getElementById('collabSearch').focus();
+}
+
+function removeCollab(contactId) {
+  projectCollabIds = projectCollabIds.filter(id => id !== contactId);
+  renderCollabChips();
+}
+
+function renderCollabChips() {
+  // Drop any IDs whose contacts have been deleted
+  projectCollabIds = projectCollabIds.filter(id => contacts.find(x => x.id === id));
+  const container = document.getElementById('collabSelected');
+  if (!container) return;
+  container.innerHTML = projectCollabIds.map(id => {
+    const c = contacts.find(x => x.id === id);
+    return `<div class="collab-chip">
+      <div class="avatar ${getAvatarClass(c)} collab-chip-av">${getInitials(c.name)}</div>
+      <span>${escHtml(c.name)}</span>
+      <button type="button" class="collab-chip-rm" onclick="removeCollab('${id}')">×</button>
+    </div>`;
+  }).join('');
 }
 
 // ===== Field Hint Tooltips =====

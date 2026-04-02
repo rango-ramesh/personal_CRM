@@ -12,7 +12,7 @@ import csv
 import io
 from datetime import date, timedelta
 
-app = FastAPI(title="Personal CRM")
+app = FastAPI(title="Nexus")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database.json")
@@ -23,11 +23,13 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 
 def load_db():
     if not os.path.exists(DB_PATH):
-        save_db({"contacts": [], "todos": []})
+        save_db({"contacts": [], "todos": [], "projects": []})
     with open(DB_PATH, "r") as f:
         db = json.load(f)
     if "todos" not in db:
         db["todos"] = []
+    if "projects" not in db:
+        db["projects"] = []
     return db
 
 
@@ -47,13 +49,24 @@ class Contact(BaseModel):
     last_contacted: Optional[str] = ""
     next_contact_reminder: Optional[str] = ""
     cadence_days: Optional[int] = None
+    project_id: Optional[str] = None
 
 
 class Todo(BaseModel):
     title: str
     status: Optional[str] = "todo"  # todo | active | complete
     contact_id: Optional[str] = None
+    project_id: Optional[str] = None
     sort_order: Optional[int] = None
+
+
+class Project(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    start_date: Optional[str] = ""
+    end_date: Optional[str] = ""
+    collaborators: Optional[List[str]] = []  # list of contact IDs
+    status: Optional[str] = "active"  # active | on_hold | completed
 
 
 class TodoReorderRequest(BaseModel):
@@ -171,6 +184,10 @@ async def bulk_delete(req: BulkDeleteRequest):
     before = len(db["contacts"])
     db["contacts"] = [c for c in db["contacts"] if c["id"] not in id_set]
     deleted = before - len(db["contacts"])
+    # Remove deleted contacts from project collaborators
+    for p in db.get("projects", []):
+        if isinstance(p.get("collaborators"), list):
+            p["collaborators"] = [cid for cid in p["collaborators"] if cid not in id_set]
     save_db(db)
     return {"deleted": deleted}
 
@@ -222,6 +239,10 @@ async def delete_contact(contact_id: str):
     db["contacts"] = [c for c in db["contacts"] if c["id"] != contact_id]
     if len(db["contacts"]) == original_len:
         raise HTTPException(status_code=404, detail="Contact not found")
+    # Remove from project collaborators
+    for p in db.get("projects", []):
+        if isinstance(p.get("collaborators"), list):
+            p["collaborators"] = [cid for cid in p["collaborators"] if cid != contact_id]
     save_db(db)
     return {"status": "deleted"}
 
@@ -382,5 +403,49 @@ async def delete_todo(todo_id: str):
     db["todos"] = [t for t in db["todos"] if t["id"] != todo_id]
     if len(db["todos"]) == original_len:
         raise HTTPException(status_code=404, detail="Todo not found")
+    save_db(db)
+    return {"status": "deleted"}
+
+
+# ── Projects ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/projects")
+async def get_projects():
+    db = load_db()
+    return db["projects"]
+
+
+@app.post("/api/projects")
+async def create_project(project: Project):
+    db = load_db()
+    new_project = project.dict()
+    new_project["id"] = str(uuid.uuid4())
+    new_project["created_at"] = date.today().isoformat()
+    db["projects"].append(new_project)
+    save_db(db)
+    return new_project
+
+
+@app.put("/api/projects/{project_id}")
+async def update_project(project_id: str, project: Project):
+    db = load_db()
+    for i, p in enumerate(db["projects"]):
+        if p["id"] == project_id:
+            updated = project.dict()
+            updated["id"] = project_id
+            updated["created_at"] = p.get("created_at", date.today().isoformat())
+            db["projects"][i] = updated
+            save_db(db)
+            return updated
+    raise HTTPException(status_code=404, detail="Project not found")
+
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: str):
+    db = load_db()
+    original_len = len(db["projects"])
+    db["projects"] = [p for p in db["projects"] if p["id"] != project_id]
+    if len(db["projects"]) == original_len:
+        raise HTTPException(status_code=404, detail="Project not found")
     save_db(db)
     return {"status": "deleted"}

@@ -1,41 +1,64 @@
-# Personal CRM
+# Nexus
 
-A lightweight, modern personal CRM that runs entirely on your Mac. Track relationships, log interactions, and stay on top of who you need to follow up with — all stored locally in a JSON file that never leaves your machine.
+A lightweight personal workspace that runs entirely on your Mac. Track relationships, manage projects, and stay on top of tasks — all stored locally in a single JSON file that never leaves your machine.
 
 ---
 
-## Features
+## Pages
 
-- **Contact management** — add, edit, delete with fields for email, phone, LinkedIn, company, tags, and notes
-- **Tags** — organise contacts with free-form labels (e.g. `VC`, `Founder`, `Advisor`) shown as chips in the table
-- **Interaction log** — record every conversation with optional notes and timestamps
-- **Cadence & reminders** — set how often to reach out; next reminder auto-advances when you log an interaction
+### Projects
+Log and track active work across three status states — **Active**, **On Hold**, and **Completed**. Each project card shows a status indicator, optional date range, description, and overlapping contact avatars for collaborators. Cards are sorted by status (Active first).
+
+- Add collaborators by searching your contacts — no freeform entry
+- Assign contacts to a project from the contact form
+- Tag tasks on the To-Do board with a project for cross-linking
+
+### Contacts
+Manage your network with fields for email, phone, LinkedIn, company, tags, notes, and cadence.
+
+- **Interaction log** — record conversations with optional notes and timestamps
+- **Cadence & reminders** — next reminder auto-advances when you log an interaction
 - **Overdue highlighting** — yellow (1–7 days late), orange (8–28 days), red (29+ days)
-- **Snooze** — push a reminder forward by 1 week without logging a fake interaction
-- **CRM → To-Do sync** — overdue contacts automatically appear as tasks in the To-Do board
-- **Kanban To-Do board** — three columns (To Do / Active / Complete) with drag-and-drop reordering within and between columns; hover a column header to archive all its items at once
-- **Search, filter & sort** — search across all fields; filter by All / Due; click column headers to sort
-- **Bulk actions** — select multiple contacts to bulk-delete or export just the selection
-- **Import / Export** — CSV import with drag-and-drop, full CSV export; duplicate names are blocked on import
-- **Keyboard shortcuts** — `N` new contact/task, `/` search, `Esc` close
+- **Snooze** — push a reminder 1 week forward without logging a fake interaction
+- **Project tag** — assign a contact to a project; shown as a badge in the table
+- **CRM → To-Do sync** — overdue contacts auto-appear as tasks on the board; when marked done they move to the Complete column rather than disappearing
+
+### To-Do
+A kanban board with three columns: **To Do**, **Active**, **Complete**.
+
+- Drag cards between columns or reorder within a column
+- **Edit button** on each card — change the title and assign a project inline
+- **Project badge** — cards tagged to a project show a purple label
+- **CRM badge** — tasks auto-created from overdue contacts show a blue CRM label
+- Archive a column's cards in one click (hover the column header)
+
+---
+
+## Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `N` | New contact / task / project (context-aware) |
+| `/` | Jump to search |
+| `Esc` | Close any open panel or modal |
 
 ---
 
 ## Prerequisites
 
-You need **Python 3** installed on your Mac. To check, open the Terminal app and run:
+You need **Python 3** installed on your Mac. To check:
 
-```
+```bash
 python3 --version
 ```
 
-If you see a version number (e.g. `Python 3.11.4`) you're good to go. If you get an error, download Python from [python.org](https://www.python.org/downloads/) and install it before continuing.
+If you see a version number (e.g. `Python 3.11.4`) you're good. If not, download it from [python.org](https://www.python.org/downloads/).
 
 ---
 
-## Setup (step by step)
+## Setup
 
-> **New to the terminal?** Open the Terminal app by pressing `Cmd + Space`, typing `Terminal`, and pressing Enter. Then follow each step below — copy and paste each command exactly.
+> **New to the terminal?** Open Terminal with `Cmd + Space` → type `Terminal` → press Enter.
 
 ### 1. Go to the project folder
 
@@ -45,19 +68,17 @@ cd ~/Documents/personal_CRM
 
 ### 2. Create a virtual environment
 
-This keeps the app's dependencies isolated from the rest of your Mac:
-
 ```bash
 python3 -m venv .venv
 ```
 
-### 3. Activate the virtual environment
+### 3. Activate it
 
 ```bash
 source .venv/bin/activate
 ```
 
-You'll see `(.venv)` appear at the start of your terminal prompt. You need to do this step each time you open a new terminal window.
+You'll see `(.venv)` at the start of your prompt. Repeat this step each time you open a new terminal window.
 
 ### 4. Install dependencies
 
@@ -65,7 +86,7 @@ You'll see `(.venv)` appear at the start of your terminal prompt. You need to do
 pip install -r requirements.txt
 ```
 
-This only needs to be done once.
+One-time only.
 
 ### 5. Start the app
 
@@ -75,15 +96,13 @@ uvicorn app:app --reload
 
 ### 6. Open in your browser
 
-Visit: **http://localhost:8000**
+**http://localhost:8000**
 
-The app is running entirely on your Mac — nothing is sent to the internet.
+Everything runs on your Mac — nothing is sent to the internet.
 
 ---
 
-## Running it after the first time
-
-Once set up, every time you want to use the app:
+## Running after first setup
 
 ```bash
 cd ~/Documents/personal_CRM
@@ -91,9 +110,7 @@ source .venv/bin/activate
 uvicorn app:app --reload
 ```
 
-Then open **http://localhost:8000** in your browser.
-
-To stop the app, press `Ctrl + C` in the terminal.
+Then open **http://localhost:8000**. Press `Ctrl + C` to stop.
 
 ---
 
@@ -103,7 +120,7 @@ To stop the app, press `Ctrl + C` in the terminal.
 personal_CRM/
 ├── app.py              # Backend server (FastAPI)
 ├── requirements.txt    # Python dependencies
-├── database.json       # Your contacts — created automatically, gitignored
+├── database.json       # Your data — created automatically, gitignored
 ├── templates/
 │   └── index.html      # App interface
 ├── static/
@@ -117,10 +134,10 @@ personal_CRM/
 
 ## Your data & privacy
 
-- All contacts are stored in `database.json` in this folder on your Mac
-- This file is listed in `.gitignore` — it will **never** be included if you push this project to GitHub
+- Everything is stored in `database.json` in this folder
+- Listed in `.gitignore` — it will **never** be included if you push to GitHub
 - Nothing is sent to any server or third party
-- To back up your contacts, copy `database.json` somewhere safe, or use the **Export CSV** button in the app
+- To back up, copy `database.json` somewhere safe or use **Export CSV** from the Contacts page
 
 ---
 
@@ -130,14 +147,17 @@ personal_CRM/
 Install Python from [python.org/downloads](https://www.python.org/downloads/) and reopen your terminal.
 
 **`command not found: uvicorn` or import errors**
-Make sure you've activated the virtual environment first (`source .venv/bin/activate`) — you should see `(.venv)` in your prompt.
+Activate the virtual environment first (`source .venv/bin/activate`) — you should see `(.venv)` in your prompt.
 
 **The page doesn't load**
-Check the terminal for error messages. Make sure the server is still running (you should see `Uvicorn running on http://127.0.0.1:8000`). Try refreshing the page or visiting http://127.0.0.1:8000 instead.
+Check the terminal for errors. Make sure the server is running (you should see `Uvicorn running on http://127.0.0.1:8000`). Try refreshing or visiting http://127.0.0.1:8000 directly.
 
 **Port already in use**
-Another process is on port 8000. Run on a different port with:
+Run on a different port:
 ```bash
 uvicorn app:app --reload --port 8001
 ```
 Then visit http://localhost:8001.
+
+**Navigation or page looks broken after an update**
+Hard-refresh your browser (`Cmd + Shift + R`) to clear the cache, then restart the server.

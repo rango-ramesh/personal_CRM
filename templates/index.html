@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Personal CRM</title>
+  <title>Nexus</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,9 +17,10 @@
     <div class="header-inner">
       <div class="logo">
         <span class="logo-icon">◈</span>
-        <span class="logo-text">Personal CRM</span>
+        <span class="logo-text">Nexus</span>
       </div>
       <nav class="page-nav">
+        <button class="page-nav-btn" id="navProjects" onclick="setPage('projects')">Projects</button>
         <button class="page-nav-btn active" id="navContacts" onclick="setPage('contacts')">Contacts</button>
         <button class="page-nav-btn" id="navTodos" onclick="setPage('todos')">To-Do</button>
       </nav>
@@ -29,6 +30,7 @@
         <button class="btn btn-ghost btn-sm" id="headerExport" onclick="exportContacts()">⬇ Export</button>
         <button class="btn btn-primary" id="headerAdd" onclick="openModal()"><span>+</span> Add Contact</button>
         <button class="btn btn-primary" id="headerAddTask" onclick="showKanbanInput('todo')" style="display:none"><span>+</span> Add Task</button>
+        <button class="btn btn-primary" id="headerAddProject" onclick="openProjectModal()" style="display:none"><span>+</span> Add Project</button>
       </div>
     </div>
   </header>
@@ -189,6 +191,67 @@
     </div>
   </main>
 
+  <!-- Projects Page -->
+  <main class="main" id="projectsPage" style="display:none">
+    <div id="projectsGrid" class="projects-grid"></div>
+    <div id="projectsEmpty" class="empty-state" style="display:none">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">No projects yet</div>
+      <div class="empty-sub">Click "Add Project" to get started, or press <kbd>N</kbd></div>
+    </div>
+  </main>
+
+  <!-- Project Modal -->
+  <div class="modal-overlay" id="projectModalOverlay" onclick="closeProjectModal(event)">
+    <div class="modal modal-lg" style="max-width:680px">
+      <div class="modal-header">
+        <h2 class="modal-title" id="projectModalTitle">Add Project</h2>
+        <button class="modal-close" onclick="document.getElementById('projectModalOverlay').classList.remove('open')">&times;</button>
+      </div>
+      <form id="projectForm" onsubmit="submitProject(event)">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Title <span class="required">*</span></label>
+            <input type="text" id="pTitle" class="form-input" placeholder="Project name" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" id="pStartDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" id="pEndDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="pStatus" class="form-input">
+              <option value="active">Active</option>
+              <option value="on_hold">On Hold</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Collaborators</label>
+            <div class="collab-picker">
+              <div class="collab-selected" id="collabSelected"></div>
+              <input type="text" id="collabSearch" class="form-input" placeholder="Search contacts…"
+                     oninput="searchCollabs(this.value)" autocomplete="off" />
+              <div class="collab-dropdown" id="collabDropdown" style="display:none"></div>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Description</label>
+            <textarea id="pDescription" class="form-input form-textarea" placeholder="What is this project about?"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('projectModalOverlay').classList.remove('open')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Detail Panel Backdrop -->
   <div class="detail-backdrop" id="detailBackdrop" onclick="closeDetail()"></div>
 
@@ -244,6 +307,12 @@
           <div class="form-group">
             <label class="form-label">Tags <span class="field-hint-icon" data-hint="Comma-separated labels, e.g. investor, mentor, client. Shown as chips in the table.">?</span></label>
             <input type="text" id="ftags" class="form-input" placeholder="investor, mentor, client" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <select id="fproject" class="form-input">
+              <option value="">No project</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Cadence (days) <span class="field-hint-icon" data-hint="Optional. How often you want to stay in touch — e.g. 14 = every 2 weeks. Leave blank for no automatic reminder cadence. When set, the Next Reminder advances by this many days each time you log an interaction.">?</span></label>
