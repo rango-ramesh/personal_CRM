@@ -62,8 +62,10 @@ If you see a version number (e.g. `Python 3.11.4`) you're good. If not, download
 
 ### 1. Go to the project folder
 
+Navigate to wherever you've saved this folder, e.g.:
+
 ```bash
-cd ~/Documents/personal_CRM
+cd path/to/nexus
 ```
 
 ### 2. Create a virtual environment
@@ -105,7 +107,7 @@ Everything runs on your Mac — nothing is sent to the internet.
 ## Running after first setup
 
 ```bash
-cd ~/Documents/personal_CRM
+cd path/to/nexus
 source .venv/bin/activate
 uvicorn app:app --reload
 ```
@@ -117,7 +119,7 @@ Then open **http://localhost:8000**. Press `Ctrl + C` to stop.
 ## Project structure
 
 ```
-personal_CRM/
+nexus/
 ├── app.py              # Backend server (FastAPI)
 ├── requirements.txt    # Python dependencies
 ├── database.json       # Your data — created automatically, gitignored
