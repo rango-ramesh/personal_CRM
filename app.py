@@ -83,7 +83,10 @@ class BulkDeleteRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+    js_path = os.path.join(BASE_DIR, "static", "app.js")
+    css_path = os.path.join(BASE_DIR, "static", "style.css")
+    asset_v = str(int(max(os.path.getmtime(js_path), os.path.getmtime(css_path))))
+    return templates.TemplateResponse(request, "index.html", {"asset_v": asset_v})
 
 
 # ── Fixed-path routes before parameterised routes ──────────────────────────

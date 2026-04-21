@@ -858,7 +858,8 @@ function renderTodos() {
     document.getElementById(`cards-${status}`).innerHTML = cols[status].map(t => {
       // Edit mode
       if (editingTodoId === t.id) {
-        const projectOptions = projects.map(p =>
+        const visibleProjects = projects.filter(p => p.status === 'active' || p.id === t.project_id);
+        const projectOptions = visibleProjects.map(p =>
           `<option value="${p.id}"${t.project_id === p.id ? ' selected' : ''}>${escHtml(p.title)}</option>`
         ).join('');
         return `
@@ -907,6 +908,19 @@ function renderTodos() {
 function showKanbanInput(status) {
   document.getElementById(`inputbox-${status}`).style.display = 'block';
   document.querySelector(`#addwrap-${status} .kanban-add-btn`)?.style.setProperty('display', 'none');
+  const sel = document.getElementById(`input-project-${status}`);
+  if (sel) {
+    const prevValue = sel.value;
+    const activeProjects = projects.filter(p => p.status === 'active');
+    const options = ['<option value="">No project</option>']
+      .concat(activeProjects.map(p => `<option value="${p.id}">${escHtml(p.title)}</option>`));
+    sel.innerHTML = options.join('');
+    if (prevValue && activeProjects.some(p => p.id === prevValue)) {
+      sel.value = prevValue;
+    } else if (activeProjects.length > 0) {
+      sel.value = activeProjects[0].id;
+    }
+  }
   document.getElementById(`input-${status}`).focus();
 }
 
@@ -924,10 +938,11 @@ function kanbanInputKey(e, status) {
 async function kanbanAddCard(status) {
   const title = document.getElementById(`input-${status}`).value.trim();
   if (!title) return;
+  const project_id = document.getElementById(`input-project-${status}`)?.value || null;
   const res = await fetch('/api/todos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, status }),
+    body: JSON.stringify({ title, status, project_id }),
   });
   if (res.ok) {
     hideKanbanInput(status);
